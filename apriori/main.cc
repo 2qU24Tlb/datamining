@@ -1,35 +1,60 @@
-#include <algorithm>
+#ifndef DM_DBHANDLER_H
+#define DM_DBHANDLER_H
+
 #include <iostream>
 #include <string>
-#include <bitset>
-#include <vector>
+#include <sstream>
 
 using namespace std;
 
 const int elements = 5;
-const int datasets = 4;
-const string db[datasets] = {"101 10", "01101", "11101", "01001"};
+const int datasize = 4;
+const string stringdb[datasize] = {"1 0 1 1 0", "0 1 1 0 1", "1 1  1 0 1", "0 1 0 0 1"};
 
-typedef bitset<elements> tidsets;
+class Datasets {
+    private:
+        bool db[datasize][elements];
+    public:
+        Datasets(const char *filename = NULL) {
+            //[TODO] read from file
+            if (filename != NULL) {
+            }
 
+            for (int i = 0; i < datasize; i++) {
+                stringstream ss(stringdb[i]);
+                for (int j =0; j < elements && ss.good(); j++) {
+                    ss >> db[i][j];
+                }
+            }
+        }
 
-void constructDB()
-{
-  vector<tidsets> mDB;
+        ~Datasets() {
+        }
 
-  for (int i = 0; i < datasets; i++) {
-    string tempString = db[i];
-    remove(tempString.begin(), tempString.end(), ' ');
+        void Display() {
+            for (int i = 0; i < datasize; i++) {
+                for (int j = 0; j < elements; j++) {
+                    cout << db[i][j] << " ";
+                }
+                cout << endl;
+            }
+        }
+};
 
-    bitset<elements> tempTD(tempString);
-    mDB.push_back(tempTD);
-  }
+typdef struct _itemcout {
+}
 
-  cout << mDB.size() << endl;
+class Candidate {
+    private:
 }
 
 int main(void)
 {
-  constructDB();
-  return 0;
+    class Datasets mydatasets;
+
+    mydatasets.Display();
+
+    return 0;
 }
+
+#endif
