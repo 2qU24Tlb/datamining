@@ -6,6 +6,8 @@
 #include <sstream>
 #include <queue>
 #include <stack>
+#include <set>
+#include <vector> 
 
 using namespace std;
 
@@ -134,7 +136,6 @@ public:
     Candidate *cur = NULL; 
     
     while (previos != NULL) {
-
       Candidate *new_item = new Candidate;
       new_item->item = previos->item;
       new_item->count = 0;
@@ -167,7 +168,10 @@ public:
       while (p != NULL) {
         if (p->next != NULL) {
           GenerateCandidate(p);
-          my_queue.push(p->sub);
+          PruneScan(p->sub);
+          if (p->sub != NULL) {
+            my_queue.push(p->sub);
+          }
         }
         p = p->next;
       }
@@ -215,7 +219,65 @@ public:
 
   void PruneGeneration() {
   }
-  void PruneScan() {
+
+  void ScanSupport(Candidate *node) {
+    set<int> clist;
+    Candidate *p = node;
+    int count = 0;
+    unsigned same = 0;
+    
+    while (p != NULL) {
+      clist.insert(p->item);
+      p = p->parent;
+    }
+    
+    for (int i = 0; i < datasize; i++) {
+      same = 0;
+      for (int j = 0; j < elements; j++) {
+        if (my_datasets->GetItem(i, j) == 0) {
+          continue;
+        }
+        
+        if (clist.count(my_datasets->GetItem(i, j)) != 0) {
+          ++same;
+        }
+
+        if (same == clist.size()) {
+          ++count;
+          break;
+        }
+      }
+    }
+    
+    node->count = count;
+  }
+
+  void PruneScan(Candidate *node) {
+    Candidate *p = node;
+    Candidate *tmp = NULL;
+
+    //get support
+    while (p != NULL) {
+      ScanSupport(p);
+      p = p->next;
+    }
+    
+    //prune support
+    p = node;
+    while (p != NULL) {
+      tmp = p->next;
+      if ((tmp != NULL) && (tmp->count < minsup)) {
+        p->next = tmp->next;
+        delete tmp;
+      }
+      p = p->next;
+    }
+
+    p = node;
+    if (p->count < minsup) {
+      p->parent->sub = NULL;
+      delete p;
+    }
   }
 
   void Display() {
