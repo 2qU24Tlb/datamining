@@ -1,4 +1,4 @@
-SOURCES=main.cc
+SOURCES=test.cc
 TARGET=test
 
 all:
