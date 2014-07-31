@@ -5,6 +5,8 @@
 #include "tire.h"
 
 const int minsup = 4;
+const int MOTIF_LENGTH = 4;
+//[TODO] add normIC
 
 typedef struct FrequentItems {
   string candidates;
@@ -15,6 +17,7 @@ typedef struct FrequentItems {
 class Apriori_2 {
  private:
   FItems *root;
+  FItems *prev_root;
   WindowTire *tire;
  public:
   Apriori_2(string *db, int length) {
@@ -22,6 +25,7 @@ class Apriori_2 {
     root->count = 0;
     root->next = NULL;
     
+    prev_root = NULL;
     tire = new WindowTire(db, length);
   }
 
@@ -31,8 +35,12 @@ class Apriori_2 {
   void Start() {
     //tire->Display();
     FirstScan();
-    SelfJoin();
-    Prune();
+    
+    while (root->next != NULL) {
+      SelfJoin();
+      Prune();
+    }
+
     Display();
   }
   
@@ -86,6 +94,9 @@ class Apriori_2 {
     
     while (p != NULL) {
       q = root->next;
+      if ((p->candidates.size() + q->candidates.size()) > MOTIF_LENGTH) {
+        break;
+      }
       while (q != NULL) {
         new_node = ConstructNode(p->candidates+q->candidates, 0);
         if (new_root == NULL) {
@@ -98,12 +109,15 @@ class Apriori_2 {
       p = p->next;
     }
     
-    p = root->next;
-    while (p != NULL) {
-      q = p;
-      p = p->next;
-      delete q; 
+    if (prev_root != NULL) {
+      p = prev_root->next;
+      while (p != NULL) {
+        q = p;
+        p = p->next;
+        delete q; 
+      }
     }
+    prev_root = root->next;
     
     root->next = new_root;
   }
@@ -113,7 +127,7 @@ class Apriori_2 {
     FItems *q = p->next;
     
     while (q != NULL) {
-      q->count = tire->SearchCount(q->candidates); 
+      q->count = tire->ApproximateSearch(q->candidates); 
       
       if (q->count == 0) {
         p->next = q->next;
@@ -124,18 +138,10 @@ class Apriori_2 {
         q = q->next;
       }
     }
-    
-    int app = 0;
-    p = root->next;
-    while (p != NULL) {
-      app = tire->ApproximateSearch(p->candidates);
-      cout << p->candidates << ":" << app << endl;
-      p = p->next;
-    }
   }
   
   void Display() {
-    FItems *p = root->next;
+    FItems *p = prev_root;
     
     while (p != NULL) {
       cout << p->candidates <<":" << p->count << endl; 
