@@ -21,10 +21,14 @@ if (len(sys.argv) == 5):
         print(["myAlg_PY/" + alg + ".py", db, minsup])
         call(["myAlg_PY/" + alg + ".py", db, minsup])
     elif(sys.argv[1] == "spmf"):
-        print(["java", "-jar", "spmf/spmf.jar", "run", alg, db, "output", minsup])
-        call(["java", "-jar", "spmf/spmf.jar", "run", alg, db, "output", minsup])
+        #print(["java", "-jar", "spmf/spmf.jar", \
+        #       "run", alg, db, "output", minsup])
+        call(["java", "-jar", "spmf/spmf.jar", \
+              "run", alg, db, "output", minsup])
 
 elif (len(sys.argv) > 1 and sys.argv[1] == "list"):
     print(algList)
+elif (len(sys.argv) > 1 and sys.argv[1] == "exam"):
+    print("./runAlg.py my Apriori DB/A1.txt 0.5")
 else:
-    print("rum_spmf.py", "algorithm", "DB", "minsup")
+    print("runAlg.py", "algorithm", "DB", "minsup")

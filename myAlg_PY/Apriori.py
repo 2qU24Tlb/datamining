@@ -1,11 +1,14 @@
 #!/bin/python
 
-#  Modified from:
-#  https://github.com/cse40647/cse40647/blob/sp.14/10%20-%20Apriori.ipynb
+# Modified from:
+# https://github.com/cse40647/cse40647/blob/sp.14/10%20-%20Apriori.ipynb
 
-import pprint
+# import pprint
 import sys
+import time
 from loadDataset import loadDataset
+from writeOutput import writeOutput
+
 
 def createCandidates(dataset):
     c1 = []
@@ -16,72 +19,74 @@ def createCandidates(dataset):
                 c1.append([item])
     c1.sort()
 
-    return [frozenset(x) for x in c1]
+    return c1
 
-def pruneCandidates(dataset, candidates, min_sup):
-    supCount = {} 
-    for trans in dataset:
-        for cands in candidates:
-            if cands.issubset(trans):
-                supCount.setdefault(cands, 0)
-                supCount[cands] += 1
-
-    DBSize = float(len(dataset))
-    newCands = []
-    newCandsDict = {}
-
-    for sets in supCount:
-        support = supCount[sets] / DBSize
-        if support >= min_sup:
-            newCands.insert(0, sets)
-            newCandsDict[sets] = support
-
-    #newCands.sort()
-    for item in newCands:
-        print(item)
-    #pprint.pprint(newCands)
-
-    return newCands, newCandsDict
 
 def joinCandiates(candidates):
     newCands = []
-    k = len(candidates[0]) 
+    k = len(candidates[0])
     length = len(candidates)
 
     for i in range(length):
         for j in range(i+1, length):
-            a = list(candidates[i])
-            b = list(candidates[j])
-            #[FIXME] for long list sorting will be a problem
-            a.sort()
-            b.sort()
-
+            a = candidates[i]
+            b = candidates[j]
             prefix1 = a[:k-1]
             prefix2 = b[:k-1]
 
             if prefix1 == prefix2:
-                newCands.append(candidates[i] | candidates[j])
+                temp = a + b[-1:]
+                newCands.append(temp)
 
     return newCands
 
+
+def pruneCandidates(dataset, candidates, min_sup):
+    supCount = [0 for x in range(0, len(candidates))]
+
+    for trans in dataset:
+        i = 0
+        for cands in candidates:
+            tmp = frozenset(cands)
+            if tmp.issubset(trans):
+                supCount[i] += 1
+            i += 1
+
+    DBSize = float(len(dataset))
+    newCands = []
+    supList = []
+
+    for id in range(0, len(supCount)):
+        support = supCount[id] / DBSize
+        if support >= min_sup:
+            tmp = (candidates[id], supCount[id])
+            supList.append(tmp)
+            newCands.append(candidates[id])
+
+    return newCands, supList
+
+
 def main(argv):
-    newDataset = loadDataset(argv[1])
-    #print("\n-->DATA SET:")
-    #pprint.pprint(newDataset)
+    start = time.perf_counter()
+
+    mDB = loadDataset(argv[1])
 
     minSup = float(argv[2])
+    candsList = []
+    allFrequent = []
 
-    candidates = createCandidates(newDataset)
-    newCands, newCandsDict = pruneCandidates(newDataset, candidates, minSup)
+    candsList = createCandidates(mDB)
+    pruneList, allFrequent = pruneCandidates(mDB, candsList, minSup)
 
-    while(len(newCands) > 1):
-        newCands = joinCandiates(newCands)
-        newCands, tempCandsDict = pruneCandidates(newDataset, newCands, minSup)
-        newCandsDict.update(tempCandsDict)
-        print(newCands)
+    while(len(pruneList) > 1):
+        candsList = joinCandiates(pruneList)
+        pruneList, tmpFrequent = pruneCandidates(mDB, candsList, minSup)
+        allFrequent.extend(tmpFrequent)
 
-    #print("-->Result:")
-    #pprint.pprint(newCandsDict)
+    writeOutput("output", allFrequent)
+
+    end = time.perf_counter()
+    print("elasped time: %.8f second" % (end - start))
 
 if __name__ == "__main__":
     main(sys.argv)

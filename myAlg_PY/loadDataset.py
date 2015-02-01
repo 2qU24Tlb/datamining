@@ -1,5 +1,7 @@
 #!/bin/python
-import sys
+
+# import pprint
+
 
 def loadDataset(filename):
     fp = open(filename, 'rt')
@@ -11,6 +13,9 @@ def loadDataset(filename):
         xact = line.split()
         xact = set(xact)
         dbList.append(xact)
-   
     fp.close()
-    return dbList 
+
+    # print("\n-->DATA SET:")
+    # pprint.pprint(dbList)
+
+    return dbList
