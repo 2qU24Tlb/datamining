@@ -26,9 +26,9 @@ if (len(sys.argv) == 5):
         call(["java", "-jar", "spmf/spmf.jar", \
               "run", alg, db, "output", minsup])
 
-elif (len(sys.argv) > 1 and sys.argv[1] == "list"):
+elif (len(sys.argv) == 2 and sys.argv[1] == "list"):
     print(algList)
-elif (len(sys.argv) > 1 and sys.argv[1] == "exam"):
+elif (len(sys.argv) == 2 and sys.argv[1] == "exam"):
     print("./runAlg.py my Apriori DB/A1.txt 0.5")
 else:
     print("runAlg.py", "algorithm", "DB", "minsup")
