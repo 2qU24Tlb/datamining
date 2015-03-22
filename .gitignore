@@ -1,4 +1,8 @@
-REF
-TAGS
-output
+## for python
+*/output/
 *__pycache__
+
+## for spark
+*.class
+myAlg_spark/targets/
+
