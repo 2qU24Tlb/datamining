@@ -6,8 +6,8 @@
 # import pprint
 import sys
 import time
-from utils.loadDataset import loadDataset
-from utils.writeOutput import writeOutput
+from common.loadDataset import loadDataset
+from common.writeOutput import writeOutput
 
 
 def createCandidates(dataset):
