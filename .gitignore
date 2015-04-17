@@ -4,5 +4,6 @@
 
 ## for spark
 *.class
-myAlg_spark/targets/
+target
+targets
 

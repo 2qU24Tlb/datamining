@@ -37,10 +37,10 @@ elif (len(sys.argv) == 5):
 
     # run spark program
     elif(sys.argv[1] == "spark"):
-        server = "spark://myArch:7077"
+        # server = "spark://myArch:7077"
         command = ["/usr/local/spark/bin/spark-submit",
-                   "--class", "org.spark." + alg.lower() + "." + alg,
-                   "--master", server,
+                   "--class", "myAlg.spark." + alg.lower() + "." + alg,
+                   "--master", "yarn",
                    "myAlg_spark/targets/" + alg + "-0.1.jar",
                    db, minsup]
         print(command)

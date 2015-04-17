@@ -1,8 +1,5 @@
 #!/bin/python
 
-# Modified from:
-# https://github.com/cse40647/cse40647/blob/sp.14/10%20-%20Apriori.ipynb
-
 # import pprint
 import sys
 import time
