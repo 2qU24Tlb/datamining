@@ -16,6 +16,6 @@ object SVT {
   }
 
   def run() {
-    println("Hello, world!")
+    println("Test")
   }
 }

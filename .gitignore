@@ -1,3 +1,6 @@
+## for all
+/test
+
 ## for python
 */output/
 *__pycache__
@@ -5,5 +8,4 @@
 ## for spark
 *.class
 target
-targets
 
