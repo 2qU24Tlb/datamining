@@ -30,7 +30,7 @@ elif (len(sys.argv) == 5):
     # run spmf program
     elif(sys.argv[1] == "spmf"):
         # java -jar spmf.jar run Apriori A1.txt output.txt 70%
-        command = ["java", "-jar", "ref/spmf/spmf.jar",
+        command = ["java", "-jar", "ref/spmf.jar",
                    "run", alg, db, "output", minsup]
         print(command)
         call(command)
