@@ -20,12 +20,3 @@ class HSets(transaction: Array[String]) {
     LFSets.sorted.toList
   }
 }
-
-// Equivalent Class
-class VSets() {
-  //val long tid sets
-  //val support
-  //val item name
-  //def +
-  //def -
-}

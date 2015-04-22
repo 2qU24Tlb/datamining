@@ -14,29 +14,56 @@ object SVT {
 
     val file = sc.textFile ("hdfs:///data/A1.txt")
     val minSup = 0.5
-    val fileSize = file.count
+    val fileSize = file.count.cache
+    //var results: String = Nil
     // stage 1: obtain global frequent list, col 1 is transaction id
-    val FItemsL1 = file.flatMap(line => line.split(" ").drop(1).map(item=>(item, 1)))
-      .reduceByKey(_ + _).collect.map(i => (i._1, i._2)).toMap.cache
+    val FItemsL1 = file.flatMap(line =>
+      line.split(" ")
+        .drop(1)
+        .map(item=>(item, 1)))
+      .reduceByKey(_ + _)
+      .filter(_._2 >= minSup * fileSize)
+      .collectAsMap
+    // method 2---> .reduceByKey(_ + _).filter(_._2 >= minSup * fileSize).sortBy(_._1).cache
 
     // method1: broadcast 1 level support list
     val BTVal = sc.broadcast(FItemsL1)
-    // method2: Cache only the frequent list
-    //.reduceByKey(_ + _).filter(_._2 >= minSup * fileSize).sortBy(_._1).cache
+    // method2: Cache the frequent list without using a hashtable
+    // use rdd operation lookup() instead
 
-    // stage 2: generate local frequent 2 item sets
-    for (line <- file) {
-      val Hid = new HSets(line)
-      val tid = Hid.tid
-      val LFreqs = Hid.findFSets(BTVal.value, minSup * fileSize)
-    }
+    // stage 2: generate frequent 2 item sets
+    val candidates = file.flatMap(line =>
+      (line.split(" ")
+        .tail
+        .filter(BTVal.value.contains(_))
+        .sorted
+        .combinations(2)
+        .map(i => (i(0) + i(1), line(0).toString))))
+      .reduceByKey((x, y) => (x+y).distinct.sorted).cache
 
-    // stage 3: local vertical mining
+    // stage 3: re-partition & local vertical mining
+    // [FixMe] Calculate the size of equivalent class
+    val GCands = candidates.keyBy(key => key._1.head)
+    val LCands = GCands.partitionBy(
+      new RangePartitioner[Char, (String,String)](BtVal.value.size, var2)).values
+    // List all partitions 
+    // LCands.mapPartitionsWithIndex((idx, itr) => itr.map(s => (idx, s))).collect.foreach(println)
 
+    LCands.mapPartitions(myfunc)
 
     //counts.saveAsTextFile("hdfs:///output/results")
 
     sc.stop()
   }
 
+  def myfunc[T](iter: Iterator[T]) : Iterator[(T, T)] = {
+    var res = List[(T, T)]()
+    var pre = iter.next
+    while (iter.hasNext) {
+      val cur = iter.next;
+      res .::= (pre, cur)
+      pre = cur;
+    }
+    res.iterator
+  }
 }
