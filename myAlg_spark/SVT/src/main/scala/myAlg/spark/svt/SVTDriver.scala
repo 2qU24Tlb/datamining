@@ -6,16 +6,15 @@ import myAlg.spark.svt._
 
 
 object SVT {
-
   def main(args: Array[String]) {
 
     val sparkConf = new SparkConf().setAppName("Scale Vertical Mining")
     val sc = new SparkContext(sparkConf)
-
     val file = sc.textFile ("hdfs:///data/A1.txt")
     val minSup = 0.5
     val fileSize = file.count.cache
     //var results: String = Nil
+
     // stage 1: obtain global frequent list, col 1 is transaction id
     val FItemsL1 = file.flatMap(line =>
       line.split(" ")
@@ -42,21 +41,24 @@ object SVT {
       .reduceByKey((x, y) => (x+y).distinct.sorted).cache
 
     // stage 3: re-partition & local vertical mining
-    // [FixMe] Calculate the size of equivalent class
+// [FixMe] Calculate the size of equivalent class
     val GCands = candidates.keyBy(key => key._1.head)
     val LCands = GCands.partitionBy(
       new RangePartitioner[Char, (String,String)](BtVal.value.size, var2)).values
-    // List all partitions 
+    //or we should use repartitionAndSortWithinPartitions ?
+
+    // we can check the partition status by using: 
     // LCands.mapPartitionsWithIndex((idx, itr) => itr.map(s => (idx, s))).collect.foreach(println)
 
-    LCands.mapPartitions(myfunc)
+    LCands.mapPartitions(genCandidates, preservesPartitioning = true)
 
     //counts.saveAsTextFile("hdfs:///output/results")
 
     sc.stop()
   }
 
-  def myfunc[T](iter: Iterator[T]) : Iterator[(T, T)] = {
+
+  def genCandidates[T](iter: Iterator[T]) : Iterator[(T, T)] = {
     var res = List[(T, T)]()
     var pre = iter.next
     while (iter.hasNext) {
@@ -66,4 +68,5 @@ object SVT {
     }
     res.iterator
   }
+
 }

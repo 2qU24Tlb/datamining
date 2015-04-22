@@ -20,32 +20,20 @@ object WordCount {
     
     // System.out.println(wordCounts.collect().mkString(", "))
 
-    val point1 = new Point(1, 1)
-    val point2 = new ColorPoint(1, 1, "red")
+    val a = List(("12", "12"), ("13", "13"), ("14", "23"))
 
-    point1.printPoint()
-    point2.printPoint()
   }
 
-  class Point(xc: Int, yc: Int) {
-    var x: Int = xc
-    var y: Int = yc
-
-    def move(dx: Int, dy: Int) {
-      x = x + dx
-      y = y + dy
+  def myfunc[T](iter: Iterator[T]) : Iterator[(T, T)] = {
+    var res = List[T]()
+    var pre = iter.next
+    while (iter.hasNext)
+    {
+      val cur = iter.next;
+      res .::= (pre + cur)
+      pre = cur;
     }
-
-    def printPoint() {
-      println(x + "," + y)
-    }
+    res.iterator
   }
 
-  class ColorPoint(u: Int, v: Int, c: String) extends Point(u, v) {
-    val color: String = c
-
-    override def printPoint() {
-      println(x + "," + y + ":" + c)
-    }
-  }
 }
