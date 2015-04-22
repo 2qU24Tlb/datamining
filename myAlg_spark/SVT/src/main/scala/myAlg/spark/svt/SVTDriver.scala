@@ -42,31 +42,29 @@ object SVT {
 
     // stage 3: re-partition & local vertical mining
 // [FixMe] Calculate the size of equivalent class
-    val GCands = candidates.keyBy(key => key._1.head)
-    val LCands = GCands.partitionBy(
+    val GroupedCands = candidates.keyBy(key => key._1.head).partitionBy(
       new RangePartitioner[Char, (String,String)](BtVal.value.size, var2)).values
     //or we should use repartitionAndSortWithinPartitions ?
 
     // we can check the partition status by using: 
     // LCands.mapPartitionsWithIndex((idx, itr) => itr.map(s => (idx, s))).collect.foreach(println)
 
-    LCands.mapPartitions(genCandidates, preservesPartitioning = true)
-
+    GroupedCands.mapPartitions(genCandidates, preservesPartitioning = true)
+    
     //counts.saveAsTextFile("hdfs:///output/results")
 
     sc.stop()
   }
 
+  def genCandidates(iter: Iterator[(String, String)]) : Iterator[(String, String)] = {
+    var result = Array[(String, String)]()
+    val LList = iter.toArray
+    val LLength = LList.length 
+    var i, j = 0
 
-  def genCandidates[T](iter: Iterator[T]) : Iterator[(T, T)] = {
-    var res = List[(T, T)]()
-    var pre = iter.next
-    while (iter.hasNext) {
-      val cur = iter.next;
-      res .::= (pre, cur)
-      pre = cur;
-    }
-    res.iterator
+    result = for (i <- 0 to LLength; j <- i + 1 to LLength) yield
+      (((LList(i)_1)+(LList(i)_1)).distinct.sorted, ((LList(i)_2)+(LList(i)_2)).distinct.sorted)
+
+    result.iterator
   }
-
 }
