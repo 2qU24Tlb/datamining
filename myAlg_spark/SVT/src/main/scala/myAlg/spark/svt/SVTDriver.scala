@@ -2,6 +2,7 @@ package myAlg.spark.svt
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.SparkContext._
+import org.apache.spark.RangePartitioner
 import myAlg.spark.svt._
 
 
@@ -12,7 +13,7 @@ object SVT {
     val sc = new SparkContext(sparkConf)
     val file = sc.textFile ("hdfs:///data/A1.txt")
     val minSup = 0.5
-    val fileSize = file.count.cache
+    val fileSize = file.count
     //var results: String = Nil
 
     // stage 1: obtain global frequent list, col 1 is transaction id
@@ -42,29 +43,36 @@ object SVT {
 
     // stage 3: re-partition & local vertical mining
 // [FixMe] Calculate the size of equivalent class
-    val GroupedCands = candidates.keyBy(key => key._1.head).partitionBy(
-      new RangePartitioner[Char, (String,String)](BtVal.value.size, var2)).values
+    val newGroup = candidates.keyBy(key => key._1.head)
+    val GroupedCands = newGroup.partitionBy(new RangePartitioner[Char, (String,String)]
+      (BTVal.value.size, newGroup)).values
     //or we should use repartitionAndSortWithinPartitions ?
 
     // we can check the partition status by using: 
     // LCands.mapPartitionsWithIndex((idx, itr) => itr.map(s => (idx, s))).collect.foreach(println)
 
-    GroupedCands.mapPartitions(genCandidates, preservesPartitioning = true)
-    
+    var counts = GroupedCands.mapPartitions(genCandidates, preservesPartitioning = true)
+
+    // keep generating the frequent items
+    // while (counts.size != 1) {
+      //counts = GroupedCands.mapPartitions(genCandidates, preservesPartitioning = true)
+    //}
+    counts.collect
+
     //counts.saveAsTextFile("hdfs:///output/results")
 
     sc.stop()
   }
 
   def genCandidates(iter: Iterator[(String, String)]) : Iterator[(String, String)] = {
-    var result = Array[(String, String)]()
     val LList = iter.toArray
     val LLength = LList.length 
     var i, j = 0
 
-    result = for (i <- 0 to LLength; j <- i + 1 to LLength) yield
-      (((LList(i)_1)+(LList(i)_1)).distinct.sorted, ((LList(i)_2)+(LList(i)_2)).distinct.sorted)
+    val result = for (i <- 0 to LLength; j <- i + 1 to LLength) yield
+      (((LList(i)_1)+(LList(i)_1)), ((LList(i)_2)+(LList(i)_2)))
 
     result.iterator
   }
+
 }
