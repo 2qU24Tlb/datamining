@@ -11,10 +11,9 @@ object SVT {
 
     val sparkConf = new SparkConf().setAppName("Scale Vertical Mining")
     val sc = new SparkContext(sparkConf)
-    val file = sc.textFile ("/tmp/A1.txt")
-    val minSup = 0.5
+    val file = sc.textFile (args(0))
+    val minSup = args(1).toDouble
     val fileSize = file.count
-    var results = List()
 
     // stage 1: obtain global frequent list, col 1 is transaction id
     val FItemsL1 = file.flatMap(line => line.split(" ") .drop(1) .map(item=>(item, 1))) .reduceByKey(_ + _) .filter(_._2 >= minSup * fileSize) .collectAsMap
@@ -43,12 +42,9 @@ object SVT {
     while (EQClass.count > 1) {
       EQClass = EQClass.map(key => (key._1.take(key._1.length - 1), List((key._1.last, key._2)))).reduceByKey(_ ++ _).filter(_._2.length >= 2).flatMap(x => eclat(x._1, x._2, (minSup * fileSize).toInt))
         .filter(x => x._2.length  >= minSup * fileSize)
+      EQClars.saveAsTextFile("hdfs:///output/results")
     }
 
-    val results = EQClass.collect
-    println(results)
-
-    //counts.saveAsTextFile("hdfs:///output/results")
 
     sc.stop()
   }
