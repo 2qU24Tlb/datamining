@@ -1,3 +1,9 @@
+/***
+ This is for COMP 7860 course project. 
+ Scalabe Vertical Mining for Big Data
+ author: Hao Zhang
+ email: zhangh15@myumanitoba.ca
+ ***/
 package myAlg.spark.svt
 
 import org.apache.spark.{SparkConf, SparkContext}
@@ -88,7 +94,13 @@ object SVT {
     result.toList
   }
 
-  def declat() {
+  def declat(key: List[String], value: List[(String, List[Int])], minSup: Int) :
+      List[(List[String], List[Int])] = {
+    var i, j = 0
+    val result = for (i <- 0 to value.length - 1; j <- i + 1 to value.length - 1) yield
+      ((key ++ List(value(i)._1) ++ List(value(j)._1)).sorted,
+        (value(i)._2.intersect(value(j)._2)).distinct.sorted)
+    result.toList
   }
 
 }

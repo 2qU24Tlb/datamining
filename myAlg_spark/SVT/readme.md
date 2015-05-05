@@ -15,7 +15,12 @@ http://www.philippe-fournier-viger.com/spmf/datasets/mushrooms.txt
 http://www.philippe-fournier-viger.com/spmf/index.php?link=datasets.php
 
 # Run
-- 1. download spark.
-- 2. build spark run time, either standalone or on Yarn.
-  3. start master/slave by using sbin/start-all.sh 
-  4. submit class
+1. download spark.
+2. build spark run time, either standalone or on Yarn.
+3. start master/slave by using sbin/start-all.sh 
+4. submit class
+
+# Bugs:
+1. DEclat
+2. viper(BitVector)
+
