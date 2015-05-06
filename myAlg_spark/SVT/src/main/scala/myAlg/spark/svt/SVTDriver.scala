@@ -11,6 +11,12 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD._
 import org.apache.spark.RangePartitioner
 
+/***
+ data structure:
+ L1: (item->count)
+ L2: ([item1, item2]->[tids])
+ L3: ([itemsets]->[tids]) 
+***/
 
 object SVT {
   def main(args: Array[String]) {
@@ -62,10 +68,11 @@ object SVT {
 
 // [FixMe] try declat
     while (EQClass.count > 1) {
-      EQClass = EQClass.map(key => (key._1.take(key._1.length - 1), List((key._1.last, key._2))))
+      EQClass = EQClass.map(
+        key => (key._1.take(key._1.length - 1), List((key._1.last, key._2))))
         .reduceByKey(_ ++ _)
         .filter(_._2.length >= 2)
-        .flatMap(x => eclat(x._1, x._2, (minSup * fileSize).toInt))
+        .flatMap(x => eclat(x._1, x._2))
         .filter(x => x._2.length  >= minSup * fileSize).cache
       //EQClars.saveAsTextFile(results)
     }
@@ -85,7 +92,9 @@ object SVT {
     result.iterator
   }
 
-  def eclat(key: List[String], value: List[(String, List[Int])], minSup: Int) :
+  // key -> prefix
+  // value -> [Itemsets, tids]
+  def eclat(key: List[String], value: List[(String, List[Int])]) :
       List[(List[String], List[Int])] = {
     var i, j = 0
     val result = for (i <- 0 to value.length - 1; j <- i + 1 to value.length - 1) yield
@@ -94,12 +103,12 @@ object SVT {
     result.toList
   }
 
-  def declat(key: List[String], value: List[(String, List[Int])], minSup: Int) :
+  def declat(key: List[String], value: List[(String, List[Int])]) :
       List[(List[String], List[Int])] = {
     var i, j = 0
     val result = for (i <- 0 to value.length - 1; j <- i + 1 to value.length - 1) yield
       ((key ++ List(value(i)._1) ++ List(value(j)._1)).sorted,
-        (value(i)._2.intersect(value(j)._2)).distinct.sorted)
+        (value(i)._2.-(value(j)._2)).distinct.sorted)
     result.toList
   }
 
