@@ -11,13 +11,6 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD._
 import org.apache.spark.RangePartitioner
 
-/***
- data structure:
- L1: (item->count)
- L2: ([item1, item2]->[tids])
- L3: ([itemsets]->[tids]) 
-***/
-
 object SVT {
   def main(args: Array[String]) {
 
@@ -26,6 +19,7 @@ object SVT {
     val file = sc.textFile (args(0))
     val minSup = args(1).toDouble
     val fileSize = file.count
+    val realminSup = minSup * fileSize
     //var results = "hdfs:///output/result"
 
     // stage 1: obtain global frequent list, col 1 is transaction id
