@@ -3,17 +3,33 @@ package myAlg.spark.svt
 // import org.apache.spark.rdd.RDD
 import scala.io.Source
 
-class VertItem(TID: Int, Item: String) {
-  val _TID = TID
-  val _Item = Item
+// start of data structure
+class VertItem(TID: Int, item: String) {
+  def getTID = TID
+  def getItem = item
 }
 
+// start of main program
 class SVT(val DB: Array[String], val minSup: Double) {
-  val _minSup = minSup
-  val _rminSup = minSup * DB.size
+  val _rminSup = minSup * DB.length
+  var results = List[String]()
 
   def run() {
-    println(minSup)
+    val _freqItems = genFreqItems(DB, _rminSup)
+    val _freqItemsets = genFreqItemsets(_freqItemsets, _rminSup)
+  }
+
+  def genFreqItems(DB: Array[String], rminSup: Int): Array[VertItem]={
+  }
+
+  def genFreqItemsets(freqitems: Array[VertItem], rminSup: Int): Array[VertItem]={
+  }
+
+  def addToResults(items: Array[Vertitem]) {
+  }
+
+  def showResults() {
+    results.foreach(println)
   }
 }
 
