@@ -1,6 +1,6 @@
-# Data Mining Algorithm Implementation
-# author: Hao Zhang
-# email: unioah@gmail.com
+# Data Mining Algorithm Implementations
 
-# Include Algorithms
+# Include Algorithms:
 * Apriori
+* eclat
+* declat
