@@ -39,13 +39,6 @@
                 <groupId>org.scala-tools</groupId>
                 <artifactId>maven-scala-plugin</artifactId>
                 <version>2.15.2</version>
-                <configuration>
-                  <launchers>
-                    <launcher>
-                      <mainClass>myAlg.spark.svt.SVT</mainClass>
-                    </launcher>
-                  </launchers>
-                </configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -55,6 +48,6 @@
                 </executions>
             </plugin>
         </plugins>  
-    </build>
+   </build>
 
 </project>

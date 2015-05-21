@@ -1,26 +1,17 @@
-title: Scalable Vertical Mining
-data: 2015-04-22
--------
+# Scalable Vertical Mining
 
-# Requirement
-1. Linux
-2. spark:1.3.1
-3. JDK:1.7
-4. Hadoop:2.6.0
+Stages:
+1. Generate Global Frequent Singletons:
+vitem = (item, TID)
+local vitem list
+local item count list
+reduce global count list
 
-# DataSets
-1. mushroom 
-http://www.philippe-fournier-viger.com/spmf/datasets/mushrooms.txt
-2. IBM Data Generator
-http://www.philippe-fournier-viger.com/spmf/index.php?link=datasets.php
+2. Generate Local 2-itemsets from global frequent list: 
 
-# Run
-1. download spark.
-2. build spark run time, either standalone or on Yarn.
-3. start master/slave by using sbin/start-all.sh 
-4. submit class
+3. Put 3-itemsets input one worker with same prefix: 
 
-# Bugs:
-1. DEclat
-2. viper(BitVector)
+Key Points:
+1. switch from eclat to declat.
+2. determine when to mining locally?
 
