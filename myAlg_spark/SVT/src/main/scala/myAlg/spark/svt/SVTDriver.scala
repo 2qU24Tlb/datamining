@@ -40,8 +40,27 @@ class SVTDriver(val DB: RDD[Array[BigInt]], val minSup: Double) {
     _results.foreach(println)
   }
 
+  def fakeData() {
+    val a = Array(1, 1, 2, 3, 4, 5).map(BigInt(_));
+    val b = Array(2, 1, 2, 3).map(BigInt(_));
+    val c = Array(3, 1, 4).map(BigInt(_));
+    //val fDB = sc.parallelize(Array(a, b, c));
+  }
+
   def genVertItem(iter: Iterator[Array[BigInt]]) : Iterator[VertItem] = {
-    val map = scala.collection.mutable.HashMap.empty[BigInt, BigInt]
+    val _item2TID = scala.collection.mutable.HashMap.empty[BigInt, List[BigInt]]
+
+    val cur = Array[BigInt]()
+    while (iter.hasNext) {
+      cur = iter.next
+      for (i <- cur.tail) {
+        if (_item2TID.contains(i)) 
+          _item2TID(i).append(cur.head)
+        else
+          _item2TID  += (i -> i.head) 
+      }
+    }
+    _item2TID.toInterator
   }
 
 }
