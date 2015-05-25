@@ -2,12 +2,13 @@ package myAlg.spark.svt
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
+import scala.collection.mutable.ArrayBuffer
 
 // start of data structure
-class VertItem(item: Array[BigInt], TIDs: Array[BigInt]) {
-  def item = item
-  def TIDs = TIDs
-  def getPrefix = item.take(item.length - 1)
+class VertItem(_item: Array[BigInt], _TIDs: Array[BigInt]) {
+  def item = _item
+  def TIDs = _TIDs
+  def prefix(): Array[BigInt] = _item.take(_item.length - 1)
 }
 
 // start of main program
@@ -23,9 +24,10 @@ class SVTDriver(val DB: RDD[Array[BigInt]], val minSup: Double) {
   }
 
   def genFreqItems(DB: RDD[Array[BigInt]], rminSup: BigInt): Array[VertItem]={
-    var tmp = new Array[VertItem](1)
-    tmp
-    // get local singleton list count
+   // get local singleton list count
+    val localItems = DB.mapPartitions(genVertItem)
+    val globalFrequent = localItems.map(x => (x.item, x.TIDs.size)).reduceByKey(_ + _).filter(_._2 >= rminSup)
+    localItems.filter(x => x.items in globalFrequent)
   }
 
   def genFreqItemsets(freqitems: Array[VertItem], rminSup: BigInt): Array[VertItem]={
@@ -48,21 +50,21 @@ class SVTDriver(val DB: RDD[Array[BigInt]], val minSup: Double) {
   }
 
   def genVertItem(iter: Iterator[Array[BigInt]]) : Iterator[VertItem] = {
-    val _item2TID = scala.collection.mutable.HashMap.empty[BigInt, List[BigInt]]
+    val _item2TID = scala.collection.mutable.HashMap.empty[BigInt, ArrayBuffer[BigInt]]
 
     val cur = Array[BigInt]()
     while (iter.hasNext) {
       cur = iter.next
       for (i <- cur.tail) {
         if (_item2TID.contains(i)) 
-          _item2TID(i).append(cur.head)
+          _item2TID(i).prepend(cur.head)
         else
-          _item2TID  += (i -> i.head) 
+          _item2TID  += (i -> (i->ArrayBuffer(cur.head))) 
       }
     }
-    _item2TID.toInterator
+    var result: ArrayBuffer[VertItem] = ArrayBuffer(VertItem).empty
+    _item2TID.foreach {keyVal => VertItem(keyVal._1, keyVal._2)}
   }
-
 }
 
 // start of test
