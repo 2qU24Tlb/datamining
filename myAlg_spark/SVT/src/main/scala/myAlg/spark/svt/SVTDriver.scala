@@ -6,18 +6,18 @@ import scala.collection.mutable.ArrayBuffer
 
 // [FixMe]can't serializable a class
 // start of data structure
-// class VertItem(item: Array[BigInt], TIDs: Array[BigInt]) extends java.io.Serializable {
-//   val _item = item.sorted
-//   val _TIDs = TIDs.sorted
-//   def getItem = _item
-//   def getTIDs = _TIDs
-//   def prefix(): Array[BigInt] = {
-//     if (_item.length == 1)
-//       _item
-//     else
-//       _item.take(_item.length - 1)
-//   }
-// }
+class VertItem(item: Array[BigInt], TIDs: Array[BigInt]) extends java.io.Serializable {
+  val _item = item.sorted
+  val _TIDs = TIDs.sorted
+  def getItem = _item
+  def getTIDs = _TIDs
+  def prefix(): Array[BigInt] = {
+    if (_item.length == 1)
+      _item
+    else
+      _item.take(_item.length - 1)
+  }
+}
 
 // start of main program
 class SVTDriver(DB: RDD[Array[BigInt]], minSup: Double) extends Serializable {
@@ -74,6 +74,9 @@ class SVTDriver(DB: RDD[Array[BigInt]], minSup: Double) extends Serializable {
 
     _result
   }
+}
+
+object SVTDriver{
 }
 
 // start of test
