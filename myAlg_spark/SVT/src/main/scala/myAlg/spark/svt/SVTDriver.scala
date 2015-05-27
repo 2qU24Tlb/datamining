@@ -4,21 +4,6 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 import scala.collection.mutable.ArrayBuffer
 
-// [FixMe]can't serializable a class
-// start of data structure
-class VertItem(item: Array[BigInt], TIDs: Array[BigInt]) extends java.io.Serializable {
-  val _item = item.sorted
-  val _TIDs = TIDs.sorted
-  def getItem = _item
-  def getTIDs = _TIDs
-  def prefix(): Array[BigInt] = {
-    if (_item.length == 1)
-      _item
-    else
-      _item.take(_item.length - 1)
-  }
-}
-
 // start of main program
 class SVTDriver(DB: RDD[Array[BigInt]], minSup: Double) extends Serializable {
   val _dbLength = DB.count
@@ -27,27 +12,29 @@ class SVTDriver(DB: RDD[Array[BigInt]], minSup: Double) extends Serializable {
 
   def run() {
     println("Number of Transactions: " + _dbLength.toString)
-    val _freqItems = genFreqItems(DB, _rminSup)
+    //val _freqItems = genFreqItems(DB, _rminSup)
+    genFreqItems(DB, _rminSup)
     //val _freqItemsets = genFreqItemsets(_freqItems, _rminSup)
   }
 
-  def genFreqItems(DB: RDD[Array[BigInt]], rminSup: BigInt): RDD[(BigInt, Array[BigInt])]={
+  //def genFreqItems(DB: RDD[Array[BigInt]], rminSup: BigInt): RDD[(BigInt, Array[BigInt])]={
+  def genFreqItems(DB: RDD[Array[BigInt]], rminSup: BigInt) {
     val _localItems = DB.mapPartitions(genVertItem)
-    val _globalItems = _localItems.map(x => (x._1, x._2.length))
-      .reduceByKey(_ + _)
-      .filter(_._2 >= rminSup)
-      .collect.sortBy(_._1).map(_._1)
-    val localFrequent =  _localItems.filter(x => _globalItems.contains(x._1))
-    localFrequent
+    // val _globalItems = _localItems.map(x => (x._1, x._2.length))
+    //   .reduceByKey(_ + _)
+    //   .filter(_._2 >= rminSup)
+    //   .collect.sortBy(_._1).map(_._1)
+    // val localFrequent =  _localItems.filter(x => _globalItems.contains(x._1))
+    // localFrequent
   }
 
-  def genFreqItemsets(freqitems: Array[VertItem], rminSup: BigInt): Array[VertItem]={
-    var tmp = new Array[VertItem](1)
-    tmp
-  }
+  // def genFreqItemsets(freqitems: Array[VertItem], rminSup: BigInt): Array[VertItem]={
+  //   var tmp = new Array[VertItem](1)
+  //   tmp
+  // }
 
-  def addToResults(items: Array[VertItem]) {
-  }
+  // def addToResults(items: Array[VertItem]) {
+  // }
 
   def showResults() {
     _results.foreach(println)
@@ -77,6 +64,19 @@ class SVTDriver(DB: RDD[Array[BigInt]], minSup: Double) extends Serializable {
 }
 
 object SVTDriver{
+  // start of data structure
+  class VertItem(item: Array[BigInt], TIDs: Array[BigInt]) extends Serializable {
+    val _item = item.sorted
+    val _TIDs = TIDs.sorted
+    def getItem = _item
+    def getTIDs = _TIDs
+    def prefix(): Array[BigInt] = {
+      if (_item.length == 1)
+        _item
+      else
+        _item.take(_item.length - 1)
+    }
+  }
 }
 
 // start of test
