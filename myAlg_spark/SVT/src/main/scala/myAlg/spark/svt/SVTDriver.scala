@@ -3,6 +3,7 @@ package myAlg.spark.svt
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.HashMap
 
 // start of main program
 class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializable {
@@ -15,22 +16,21 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
     val _freqItems = genFreqItems(transactions, _rminSup)
     // level 2: intersection with local singletons to get 2-frequent itemset.
     // level 3: repartiotion to do local eclat/declat.
-    println(_freqItems.collect.mkString)
   }
 
-  def genFreqItems(DB: RDD[Array[Long]], rminSup: Long): RDD[(Long, Array[Long])]={
+  def genFreqItems(DB: RDD[Array[Long]], rminSup: Long): RDD[(Long, Array[Long])] = {
     val _localItems = DB.mapPartitions(genVertItem)
-    // val _globalItems = _localItems.map(x => (x._1, x._2.length))
-    //   .reduceByKey(_ + _)
-    //   .filter(_._2 >= rminSup)
-    //   .collect.sortBy(_._1).map(_._1)
-    // val localFrequent =  _localItems.filter(x => _globalItems.contains(x._1))
-    _localItems
+    val _globalItems = _localItems.map(x => (x._1, x._2.length))
+      .reduceByKey(_ + _)
+      .filter(_._2 >= rminSup)
+      .collect.sortBy(_._1).map(_._1)
+    val localFrequent =  _localItems.filter(x => _globalItems.contains(x._1))
+    localFrequent
   }
 
   // generate vertical domain items in each partition
   def genVertItem(iter: Iterator[Array[Long]]) : Iterator[(Long, Array[Long])] = {
-    val _item2TID = scala.collection.mutable.HashMap.empty[Long, ArrayBuffer[Long]]
+    val _item2TID = HashMap.empty[Long, ArrayBuffer[Long]]
 
     var cur = Array[Long]()
     while (iter.hasNext) {
