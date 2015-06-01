@@ -19,11 +19,14 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
   }
 
   def genFreqItems(DB: RDD[Array[Long]], rminSup: Long): RDD[(Long, Array[Long])] = {
-    val _localItems = DB.mapPartitions(genVertItem)
+    val _localItems = DB.mapPartitions(genVertItem).cache
     val _globalItems = _localItems.map(x => (x._1, x._2.length))
       .reduceByKey(_ + _)
       .filter(_._2 >= rminSup)
-      .collect.sortBy(_._1).map(_._1)
+      .collect
+      .sortBy(_._1)
+      .map(_._1)
+    sc.broadcast(_globalItems)
     val localFrequent =  _localItems.filter(x => _globalItems.contains(x._1))
     localFrequent
   }
@@ -53,12 +56,12 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
 
 object SVTDriver{
   // start of data structure
-  class VertItem(item: Array[BigInt], TIDs: Array[BigInt]) extends Serializable {
+  class VertItem(item: Array[Long], TIDs: Array[Long]) extends Serializable {
     val _item = item.sorted
     val _TIDs = TIDs.sorted
     def getItem = _item
     def getTIDs = _TIDs
-    def prefix(): Array[BigInt] = {
+    def prefix(): Array[Long] = {
       if (_item.length == 1)
         _item
       else
@@ -73,15 +76,15 @@ object MyTest {
     val conf = new SparkConf().setAppName("Scale Vertical Mining example")
     val sc = new SparkContext(conf)
 
-    // val t1 = Array(1, 1, 2, 3, 4, 5).map(BigInt(_));
-    // val t2 = Array(2, 1, 2, 3).map(BigInt(_));
-    // val t3 = Array(3, 1, 4).map(BigInt(_));
-    // val t4 = Array(4, 1, 3, 4, 5).map(BigInt(_));
-    // val t5 = Array(5, 2, 3, 4, 5).map(BigInt(_));
-    // val t6 = Array(6, 2, 3, 4).map(BigInt(_));
-    // val t7 = Array(7, 3, 4, 5).map(BigInt(_));
-    // val t8 = Array(8, 1, 2, 3).map(BigInt(_));
-    // val t9 = Array(9, 2, 3, 5).map(BigInt(_));
+    // val t1 = Array(1, 1, 2, 3, 4, 5).map(_.toLong);
+    // val t2 = Array(2, 1, 2, 3).map(_.toLong);
+    // val t3 = Array(3, 1, 4).map(_.toLong);
+    // val t4 = Array(4, 1, 3, 4, 5).map(_.toLong);
+    // val t5 = Array(5, 2, 3, 4, 5).map(_.toLong);
+    // val t6 = Array(6, 2, 3, 4).map(_.toLong);
+    // val t7 = Array(7, 3, 4, 5).map(_.toLong);
+    // val t8 = Array(8, 1, 2, 3).map(_.toLong);
+    // val t9 = Array(9, 2, 3, 5).map(_.toLong);
     // val fDB = sc.parallelize(Array(t1, t2, t3, t4, t5, t6, t7, t8, t9), 3);
 
     val DB = sc.textFile(args(0)).map(_.split(" ").map(_.toLong)).cache
