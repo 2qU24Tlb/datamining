@@ -5,6 +5,22 @@ import org.apache.spark.rdd.RDD
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
 
+
+// start of data structure
+class VertItem(item: Array[Long], TIDs: Array[Long]) extends Serializable {
+  val _item = item.sorted
+  val _TIDs = TIDs.sorted
+  def +(another :VertItem) = {
+    new VertItem(this._item, (this._TIDs ++ another._TIDs).distinct.sorted)
+  }
+  def prefix(): Array[Long] = {
+    if (_item.length == 1)
+      _item
+    else
+      _item.take(_item.length - 1)
+  }
+}
+
 // start of main program
 class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializable {
   val _dbLength: Long = transactions.count
@@ -13,26 +29,32 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
 
   def run() {
     println("Number of Transactions: " + _dbLength.toString)
-    val _freqItems = genFreqItems(transactions, _rminSup)
-    // level 2: intersection with local singletons to get 2-frequent itemset.
+    val _freqItems = genFreqItems(transactions, _rminSup).cache
+    // val tmp = _freqItems.collect.foreach(
+    //   x => println(x._item.mkString(), x._TIDs.mkString(" ")))
+    val _freqEClass = genFreqEclass(_freqItems, _rminSup)
     // level 3: repartiotion to do local eclat/declat.
   }
 
-  def genFreqItems(DB: RDD[Array[Long]], rminSup: Long): RDD[(Long, Array[Long])] = {
-    val _localItems = DB.mapPartitions(genVertItem).cache
+  def genFreqItems(DB: RDD[Array[Long]], rminSup: Long): RDD[VertItem] = {
+    val _localItems = DB.mapPartitions(genItems).cache
     val _globalItems = _localItems.map(x => (x._1, x._2.length))
       .reduceByKey(_ + _)
       .filter(_._2 >= rminSup)
       .collect
       .sortBy(_._1)
       .map(_._1)
-    sc.broadcast(_globalItems)
     val localFrequent =  _localItems.filter(x => _globalItems.contains(x._1))
+      .map(x => new VertItem(Array(x._1), x._2))
     localFrequent
   }
 
+  def genFreqEclass(singletons: RDD[VertItem], rminSup: Long): RDD[VertItem] = {
+    val _localEclass  = singletons.mapPartitions(genEclass).cache
+  }
+
   // generate vertical domain items in each partition
-  def genVertItem(iter: Iterator[Array[Long]]) : Iterator[(Long, Array[Long])] = {
+  def genItems(iter: Iterator[Array[Long]]) : Iterator[(Long, Array[Long])] = {
     val _item2TID = HashMap.empty[Long, ArrayBuffer[Long]]
 
     var cur = Array[Long]()
@@ -52,20 +74,10 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
 
     _result
   }
-}
 
-object SVTDriver{
-  // start of data structure
-  class VertItem(item: Array[Long], TIDs: Array[Long]) extends Serializable {
-    val _item = item.sorted
-    val _TIDs = TIDs.sorted
-    def getItem = _item
-    def getTIDs = _TIDs
-    def prefix(): Array[Long] = {
-      if (_item.length == 1)
-        _item
-      else
-        _item.take(_item.length - 1)
+  def genEclass(iter: Iterator[VertItem]): Iterator[VertItem] = {
+    while (iter.hasNext) {
+      var cur = iter.next
     }
   }
 }
@@ -87,7 +99,7 @@ object MyTest {
     // val t9 = Array(9, 2, 3, 5).map(_.toLong);
     // val fDB = sc.parallelize(Array(t1, t2, t3, t4, t5, t6, t7, t8, t9), 3);
 
-    val DB = sc.textFile(args(0)).map(_.split(" ").map(_.toLong)).cache
+    val DB = sc.textFile(args(0)).map(_.split("\\s+").map(_.toLong)).cache
     val minSup = args(1).toDouble
 
     val model = new SVTDriver(DB, minSup)
@@ -96,3 +108,4 @@ object MyTest {
     sc.stop
   }
 }
+ 
