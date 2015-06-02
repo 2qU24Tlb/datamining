@@ -10,8 +10,12 @@ import scala.collection.mutable.HashMap
 class VertItem(item: Array[Long], TIDs: Array[Long]) extends Serializable {
   val _item = item.sorted
   val _TIDs = TIDs.sorted
-  def +(another :VertItem) = {
+  def +(another: VertItem) = {
     new VertItem(this._item, (this._TIDs ++ another._TIDs).distinct.sorted)
+  }
+  def intersect(another: VertItem) = {
+    new VertItem((this._item ++ another._item).distinct.sorted,
+      (this._TIDs.intersect(another._TIDs)).sorted)
   }
   def prefix(): Array[Long] = {
     if (_item.length == 1)
@@ -30,9 +34,9 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
   def run() {
     println("Number of Transactions: " + _dbLength.toString)
     val _freqItems = genFreqItems(transactions, _rminSup).cache
-    // val tmp = _freqItems.collect.foreach(
+    //val _freqEClass = genFreqEclass(_freqItems, _rminSup).cache
+    // _freqEClass.collect.foreach(
     //   x => println(x._item.mkString(), x._TIDs.mkString(" ")))
-    val _freqEClass = genFreqEclass(_freqItems, _rminSup)
     // level 3: repartiotion to do local eclat/declat.
   }
 
@@ -50,7 +54,8 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
   }
 
   def genFreqEclass(singletons: RDD[VertItem], rminSup: Long): RDD[VertItem] = {
-    val _localEclass  = singletons.mapPartitions(genEclass).cache
+    //val _localEclass  = singletons.mapPartitions(genEclass).cache
+    singletons
   }
 
   // generate vertical domain items in each partition
@@ -76,9 +81,13 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
   }
 
   def genEclass(iter: Iterator[VertItem]): Iterator[VertItem] = {
-    while (iter.hasNext) {
-      var cur = iter.next
-    }
+    val LList = iter.toList
+    var i, j = 0
+
+    var result = for (i <- 0 to LList.length - 1; j <- i + 1 to LList.length - 1) yield {
+        LList(i).intersect(LList(j))
+      }
+    result.iterator
   }
 }
 
