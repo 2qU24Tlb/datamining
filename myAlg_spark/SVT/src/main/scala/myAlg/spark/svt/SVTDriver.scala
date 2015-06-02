@@ -10,6 +10,8 @@ import scala.collection.mutable.HashMap
 class VertItem(item: Array[Long], TIDs: Array[Long]) extends Serializable {
   val _item = item.sorted
   val _TIDs = TIDs.sorted
+  val prefix = {if (_item.length == 1) 0 else _item.take(_item.length - 1)}
+
   def +(another: VertItem) = {
     new VertItem(this._item, (this._TIDs ++ another._TIDs).distinct.sorted)
   }
@@ -17,48 +19,95 @@ class VertItem(item: Array[Long], TIDs: Array[Long]) extends Serializable {
     new VertItem((this._item ++ another._item).distinct.sorted,
       (this._TIDs.intersect(another._TIDs)).sorted)
   }
-  def prefix(): Array[Long] = {
-    if (_item.length == 1)
-      _item
-    else
-      _item.take(_item.length - 1)
+  override def toString(): String = {
+    "(" + _item.mkString(",") + ")" + ":" + _TIDs.mkString(",")
   }
+}
+
+object Utils {
+  var debug = false
+  var result = ArrayBuffer[String] ()
+
+  // check partition status
+  def checkParttion[T] (part: RDD[T]) {
+    part.mapPartitionsWithIndex((idx, itr) => itr.map(s => (idx, s))).collect.foreach(println)
+  }
+
+  def addResult(item: String) {
+    if (debug)
+      result.append(item)
+  }
+
+  def showResult() {
+    if (debug)
+      for (i <- result)
+        println(i)
+  }
+
+  //function: write result to log file
 }
 
 // start of main program
 class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializable {
   val _dbLength: Long = transactions.count
   val _rminSup: Long = (minSup * _dbLength).ceil.toLong
-  // var result
 
   def run() {
     println("Number of Transactions: " + _dbLength.toString)
+
+    UTILS.addResult("Level 1 -->")
     val _freqItems = genFreqItems(transactions, _rminSup).cache
-    //val _freqEClass = genFreqEclass(_freqItems, _rminSup).cache
-    // _freqEClass.collect.foreach(
-    //   x => println(x._item.mkString(), x._TIDs.mkString(" ")))
-    // level 3: repartiotion to do local eclat/declat.
+    _freqItems.collect.foreach(x => Utils.addResult(x.toString))
+
+    UTILS.addResult("Level 2 -->")
+    val _freqEClass = genFreqEclass(_freqItems, _rminSup).cache
+    _freqEClass.collect.foreach(x => Utils.addResult(x.toString))
+
+    UTILS.addResult("Level 3 -->")
+    //val _freqSets = genFreqSets(_freqEClass, _rminSup).cache
+    //_freqEClass.collect.foreach(x => Utils.addResult(x.toString))
+
+    Utils.showResult
   }
 
+  //generate local frequent items in each partition
   def genFreqItems(DB: RDD[Array[Long]], rminSup: Long): RDD[VertItem] = {
     val _localItems = DB.mapPartitions(genItems).cache
     val _globalItems = _localItems.map(x => (x._1, x._2.length))
       .reduceByKey(_ + _)
       .filter(_._2 >= rminSup)
       .collect
-      .sortBy(_._1)
       .map(_._1)
-    val localFrequent =  _localItems.filter(x => _globalItems.contains(x._1))
+    val localResult =  _localItems.filter(x => _globalItems.contains(x._1))
       .map(x => new VertItem(Array(x._1), x._2))
-    localFrequent
+    localResult
   }
 
+  // generate first level of equivalent class from singletons 
   def genFreqEclass(singletons: RDD[VertItem], rminSup: Long): RDD[VertItem] = {
-    //val _localEclass  = singletons.mapPartitions(genEclass).cache
-    singletons
+    val _localEclass  = singletons.mapPartitions(genEclass).cache
+    val _globalItems = _localEclass.map(x => (x._item.mkString, x._TIDs.length))
+      .reduceByKey(_ + _)
+      .filter(_._2 >= rminSup)
+      .collect
+      .map(_._1)
+    val localFrequent =  _localEclass.filter(
+      x => _globalItems.contains(x._item.mkString))
+    // [BigFix] we need to calculate the size of freqEclass that fits the memory
+
+    val maped = localFrequent.keyBy(x => x.prefix.mkString)
+    val localResult = maped.partitionBy(new RangePartitioner[String, VertItem](maped.count, maped)).values.map(_._2)
+
+    localResult
   }
 
-  // generate vertical domain items in each partition
+  // generate inheritors from equivalent class
+  def genFreqSets(Eclass: RDD[VertItem], rminSup: Long): RDD[VertItem] = {
+    val _localEclass  = Eclass.mapPartitions(genEclass)
+    _localEclass
+  }
+
+  // transform horizontal database to vertical form
   def genItems(iter: Iterator[Array[Long]]) : Iterator[(Long, Array[Long])] = {
     val _item2TID = HashMap.empty[Long, ArrayBuffer[Long]]
 
@@ -81,14 +130,19 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
   }
 
   def genEclass(iter: Iterator[VertItem]): Iterator[VertItem] = {
-    val LList = iter.toList
+    val vList = iter.toList
     var i, j = 0
 
-    var result = for (i <- 0 to LList.length - 1; j <- i + 1 to LList.length - 1) yield {
-        LList(i).intersect(LList(j))
-      }
+    var result = for (i <- 0 to vList.length - 1;
+      j <- i + 1 to vList.length - 1;
+      if (vList(i).prefix == vList(j).prefix)) yield {
+
+      vList(i).intersect(vList(j))
+    }
+    result.filter(x => x._TIDs.length != 0)
     result.iterator
   }
+
 }
 
 // start of test
@@ -97,24 +151,16 @@ object MyTest {
     val conf = new SparkConf().setAppName("Scale Vertical Mining example")
     val sc = new SparkContext(conf)
 
-    // val t1 = Array(1, 1, 2, 3, 4, 5).map(_.toLong);
-    // val t2 = Array(2, 1, 2, 3).map(_.toLong);
-    // val t3 = Array(3, 1, 4).map(_.toLong);
-    // val t4 = Array(4, 1, 3, 4, 5).map(_.toLong);
-    // val t5 = Array(5, 2, 3, 4, 5).map(_.toLong);
-    // val t6 = Array(6, 2, 3, 4).map(_.toLong);
-    // val t7 = Array(7, 3, 4, 5).map(_.toLong);
-    // val t8 = Array(8, 1, 2, 3).map(_.toLong);
-    // val t9 = Array(9, 2, 3, 5).map(_.toLong);
-    // val fDB = sc.parallelize(Array(t1, t2, t3, t4, t5, t6, t7, t8, t9), 3);
-
     val DB = sc.textFile(args(0)).map(_.split("\\s+").map(_.toLong)).cache
     val minSup = args(1).toDouble
 
+    // val DB = sc.textFile("/tmp/hao/DB/retail.txt").map(_.split("\\s+").map(_.toLong)).cache
+    // val minSup = 0.5
+
     val model = new SVTDriver(DB, minSup)
+    Utils.debug = true
     model.run()
 
     sc.stop
   }
 }
- 
