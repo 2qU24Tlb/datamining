@@ -4,13 +4,14 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
+import org.apache.spark.RangePartitioner
 
 
 // start of data structure
 class VertItem(item: Array[Long], TIDs: Array[Long]) extends Serializable {
   val _item = item.sorted
   val _TIDs = TIDs.sorted
-  val prefix = {if (_item.length == 1) 0 else _item.take(_item.length - 1)}
+  val prefix = (_item.take(_item.length - 1).mkString)
 
   def +(another: VertItem) = {
     new VertItem(this._item, (this._TIDs ++ another._TIDs).distinct.sorted)
@@ -55,17 +56,20 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
   def run() {
     println("Number of Transactions: " + _dbLength.toString)
 
-    UTILS.addResult("Level 1 -->")
+    // level 1
     val _freqItems = genFreqItems(transactions, _rminSup).cache
-    _freqItems.collect.foreach(x => Utils.addResult(x.toString))
+    if (Utils.debug)
+      _freqItems.collect.foreach(x => Utils.addResult(x.toString))
 
-    UTILS.addResult("Level 2 -->")
+    // level 2
     val _freqEClass = genFreqEclass(_freqItems, _rminSup).cache
-    _freqEClass.collect.foreach(x => Utils.addResult(x.toString))
+    if (Utils.debug)
+      _freqEClass.collect.foreach(x => Utils.addResult(x.toString))
 
-    UTILS.addResult("Level 3 -->")
-    //val _freqSets = genFreqSets(_freqEClass, _rminSup).cache
-    //_freqEClass.collect.foreach(x => Utils.addResult(x.toString))
+    // level 3
+    val _freqSets = genFreqSets(_freqEClass, _rminSup).cache
+    if (Utils.debug)
+      _freqSets.collect.foreach(x => Utils.addResult(x.toString))
 
     Utils.showResult
   }
@@ -83,7 +87,7 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
     localResult
   }
 
-  // generate first level of equivalent class from singletons 
+  // generate first level of equivalent class from singletons
   def genFreqEclass(singletons: RDD[VertItem], rminSup: Long): RDD[VertItem] = {
     val _localEclass  = singletons.mapPartitions(genEclass).cache
     val _globalItems = _localEclass.map(x => (x._item.mkString, x._TIDs.length))
@@ -93,17 +97,21 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
       .map(_._1)
     val localFrequent =  _localEclass.filter(
       x => _globalItems.contains(x._item.mkString))
-    // [BigFix] we need to calculate the size of freqEclass that fits the memory
 
-    val maped = localFrequent.keyBy(x => x.prefix.mkString)
-    val localResult = maped.partitionBy(new RangePartitioner[String, VertItem](maped.count, maped)).values.map(_._2)
+    // [BugFix] we need to calculate the size of freqEclass that fits the memory
+    val reMap = localFrequent.keyBy(x => x.prefix.mkString)
+    val localResult = reMap.partitionBy(
+      new RangePartitioner[String, VertItem](singletons.count.toInt, reMap)).map(_._2)
 
     localResult
   }
 
   // generate inheritors from equivalent class
   def genFreqSets(Eclass: RDD[VertItem], rminSup: Long): RDD[VertItem] = {
-    val _localEclass  = Eclass.mapPartitions(genEclass)
+    val _localEclass  = Eclass.mapPartitions(eclat)
+
+    // [BugFix] calculate the density of database
+
     _localEclass
   }
 
@@ -142,6 +150,23 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
     result.filter(x => x._TIDs.length != 0)
     result.iterator
   }
+
+  def eclat(iter: Iterator[VertItem]): Iterator[VertItem] = {
+    val vList = iter.toList
+    var i, j = 0
+    
+    var result = for (i <- 0 to vList.length - 1;
+      j <- i + 1 to vList.length - 1;
+      if (vList(i).prefix == vList(j).prefix)) yield {
+
+      vList(i).intersect(vList(j))
+    }
+    result.filter(x => x._TIDs.length != 0)
+    result.iterator
+
+  }
+
+  // declat
 
 }
 
