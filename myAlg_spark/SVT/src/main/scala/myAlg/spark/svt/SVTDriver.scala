@@ -12,6 +12,7 @@ class VertItem(item: Array[Long], TIDs: Array[Long]) extends Serializable {
   val _item = item.sorted
   val _TIDs = TIDs.sorted
   val prefix = (_item.take(_item.length - 1).mkString)
+  var support = TIDs.length
 
   def +(another: VertItem) = {
     new VertItem(this._item, (this._TIDs ++ another._TIDs).distinct.sorted)
@@ -19,6 +20,20 @@ class VertItem(item: Array[Long], TIDs: Array[Long]) extends Serializable {
   def intersect(another: VertItem) = {
     new VertItem((this._item ++ another._item).distinct.sorted,
       (this._TIDs.intersect(another._TIDs)).sorted)
+  }
+  // if superset is not using diff form
+  def diff(another: VertItem): VertItem = {
+    val newItem = new VertItem((this._item ++ another._item).distinct.sorted,
+      (this._TIDs.diff(another._TIDs)).sorted)
+    newItem.support = this.support - newItem.support
+    newItem
+  }
+  // if superset is already using diff form
+  def diff2(another: VertItem): VertItem = {
+    val newItem = new VertItem((this._item ++ another._item).distinct.sorted,
+      (another._TIDs.diff(this._TIDs)).sorted)
+    newItem.support = this.support - newItem.support
+    newItem
   }
   override def toString(): String = {
     "(" + _item.mkString(",") + ")" + ":" + _TIDs.mkString(",")
@@ -108,9 +123,8 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
 
   // generate inheritors from equivalent class
   def genFreqSets(Eclass: RDD[VertItem], rminSup: Long): RDD[VertItem] = {
-    val _localEclass  = Eclass.mapPartitions(eclat)
+    val _localEclass  = Eclass.mapPartitions(genSets)
 
-    // [BugFix] calculate the density of database
 
     _localEclass
   }
@@ -151,22 +165,52 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
     result.iterator
   }
 
-  def eclat(iter: Iterator[VertItem]): Iterator[VertItem] = {
-    val vList = iter.toList
+  def genSets(iter: Iterator[VertItem]): Iterator[VertItem] = {
+    var superSet = iter.toList
     var i, j = 0
     
-    var result = for (i <- 0 to vList.length - 1;
-      j <- i + 1 to vList.length - 1;
-      if (vList(i).prefix == vList(j).prefix)) yield {
+    var subSet = for (i <- 0 to superSet.length - 1;
+      j <- i + 1 to superSet.length - 1;
+      if (superSet(i).prefix == superSet(j).prefix)) yield {
 
-      vList(i).intersect(vList(j))
+      superSet(i).intersect(superSet(j))
     }
-    result.filter(x => x._TIDs.length != 0)
+    subSet.filter(x => x.support >= _rminSup)
+
+    // 0 -- use eclat
+    // 1 -- use declat, superset is using intersection
+    // 2 -- use declat, superset is using differences
+    val declat = 0
+
+    while(result.length > 1) {
+      if (eclat == 0) {
+        // calculate the density of database
+        if (subSet.support * 2 >= superSet.support) {
+          eclat = 1
+        }
+      }
+      superSet = subSet
+
+      subSet = for (i <- 0 to superSet.length - 1;
+        j <- i + 1 to superSet.length - 1;
+        if (superSet(i).prefix == superSet(j).prefix)) yield {
+        if (declat == 0) {
+          superSet(i).intersect(superSet(j))
+        } else if (declat == 1){
+          superSet(i).diff(superSet(j))
+        } else {
+          superSet(i).diff2(superSet(j))
+        }
+      }
+
+      result.filter(x => x.support >= _rminSup)
+
+      if (declat == 1) {
+        declat = 2
+      }
+    }
     result.iterator
-
   }
-
-  // declat
 
 }
 
