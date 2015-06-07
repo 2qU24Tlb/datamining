@@ -60,10 +60,10 @@ object Utils {
         println(i)
   }
 
-  //function: write result to log file
+  //function: write results to log file
 }
 
-// start of main program
+// start of driver section
 class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializable {
   val _dbLength: Long = transactions.count
   val _rminSup: Long = (minSup * _dbLength).ceil.toLong
@@ -105,7 +105,7 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
   // generate first level of equivalent class from singletons
   def genFreqEclass(singletons: RDD[VertItem], rminSup: Long): RDD[VertItem] = {
     val _localEclass  = singletons.mapPartitions(genEclass).cache
-    val _globalItems = _localEclass.map(x => (x._item.mkString, x._TIDs.length))
+    val _globalItems = _localEclass.map(x => (x._item.mkString, x.support))
       .reduceByKey(_ + _)
       .filter(_._2 >= rminSup)
       .collect
@@ -124,7 +124,6 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
   // generate inheritors from equivalent class
   def genFreqSets(Eclass: RDD[VertItem], rminSup: Long): RDD[VertItem] = {
     val _localEclass  = Eclass.mapPartitions(genSets)
-
 
     _localEclass
   }
@@ -161,7 +160,7 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
 
       vList(i).intersect(vList(j))
     }
-    result.filter(x => x._TIDs.length != 0)
+    result = result.filter(x => x.support != 0)
     result.iterator
   }
 
@@ -172,24 +171,27 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
     var subSet = for (i <- 0 to superSet.length - 1;
       j <- i + 1 to superSet.length - 1;
       if (superSet(i).prefix == superSet(j).prefix)) yield {
-
-      superSet(i).intersect(superSet(j))
+      if (superSet(i)._item == superSet(j)._item) {
+        superSet(i) + superSet(j)
+      } else {
+        superSet(i).intersect(superSet(j))
+      }
     }
-    subSet.filter(x => x.support >= _rminSup)
+    subSet = subSet.filter(x => x.support >= _rminSup)
 
-    // 0 -- use eclat
-    // 1 -- use declat, superset is using intersection
-    // 2 -- use declat, superset is using differences
-    val declat = 0
+    // 0 -- will use eclat
+    // 1 -- will use declat, superset is using intersection
+    // 2 -- will use declat, superset is using differences
+    var declat = 0
 
-    while(result.length > 1) {
-      if (eclat == 0) {
+    while(subSet.length > 1) {
+      if (declat == 0) {
         // calculate the density of database
-        if (subSet.support * 2 >= superSet.support) {
-          eclat = 1
+        if (subSet.length * 2 >= superSet.length) {
+          declat = 1
         }
       }
-      superSet = subSet
+      superSet = subSet.toList
 
       subSet = for (i <- 0 to superSet.length - 1;
         j <- i + 1 to superSet.length - 1;
@@ -203,15 +205,14 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
         }
       }
 
-      result.filter(x => x.support >= _rminSup)
+      subSet = subSet.filter(x => x.support >= _rminSup)
 
       if (declat == 1) {
         declat = 2
       }
     }
-    result.iterator
+    subSet.iterator
   }
-
 }
 
 // start of test
