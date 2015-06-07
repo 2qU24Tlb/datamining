@@ -128,9 +128,6 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
   def combineSame(iter: Iterator[VertItem]): Iterator[(String, VertItem)] = {
     val _EclassList = HashMap.empty[String, VertItem]
 
-    var cur = new VertItem(Array(1l), Array(1l))
-    var key:String = "0"
-
     while (iter.hasNext) {
       var cur = iter.next
       var key = cur._item.mkString
