@@ -124,17 +124,16 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
     localResult
   }
 
+  // combine same items in a same partition
   def combineSame(iter: Iterator[VertItem]): Iterator[(String, VertItem)] = {
     val _EclassList = HashMap.empty[String, VertItem]
 
-    var cur = iter.next
-    var key = cur._item.mkString
-
-    _EclassList += (key -> cur) 
+    var cur = new VertItem(Array(1l), Array(1l))
+    var key:String = "0"
 
     while (iter.hasNext) {
-      cur = iter.next
-      key = cur._item.mkString
+      var cur = iter.next
+      var key = cur._item.mkString
 
       if (_EclassList.contains(key)) {
         _EclassList += (key -> (_EclassList(key) + cur))
