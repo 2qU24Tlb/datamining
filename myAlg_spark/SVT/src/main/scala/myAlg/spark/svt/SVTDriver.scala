@@ -119,18 +119,30 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
       new RangePartitioner[String, VertItem](singletons.count.toInt, reMap))
       .map(_._2)
       .mapPartitions(combineSame)
+      .map(_._2)
 
     localResult
   }
 
-  def combineSame(iter: Iterator[VertItem]): Iterator[VertItem] = {
-    val vList = iter.toList
-    var result = for (i <- 0 to vList.length - 1;
-      j <- i + 1 to vList.length - 1;
-      if (vList(i)._item == vList(j)._item)) yield {
-      vList(i) + (vList(j))
+  def combineSame(iter: Iterator[VertItem]): Iterator[(String, VertItem)] = {
+    val _EclassList = HashMap.empty[String, VertItem]
+
+    var cur = iter.next
+    var key = cur._item.mkString
+
+    _EclassList += (key -> cur) 
+
+    while (iter.hasNext) {
+      cur = iter.next
+      key = cur._item.mkString
+
+      if (_EclassList.contains(key)) {
+        _EclassList += (key -> (_EclassList(key) + cur))
+      } else {
+        _EclassList += (key -> cur)
+      }
     }
-    result.iterator
+    _EclassList.toList.iterator
   }
 
   // generate inheritors from equivalent class
