@@ -116,9 +116,21 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
     // [BugFix] we need to calculate the size of freqEclass that fits the memory
     val reMap = localFrequent.keyBy(x => x.prefix.mkString)
     val localResult = reMap.partitionBy(
-      new RangePartitioner[String, VertItem](singletons.count.toInt, reMap)).map(_._2)
+      new RangePartitioner[String, VertItem](singletons.count.toInt, reMap))
+      .map(_._2)
+      .mapPartitions(combineSame)
 
     localResult
+  }
+
+  def combineSame(iter: Iterator[VertItem]): Iterator[VertItem] = {
+    val vList = iter.toList
+    var result = for (i <- 0 to vList.length - 1;
+      j <- i + 1 to vList.length - 1;
+      if (vList(i)._item == vList(j)._item)) yield {
+      vList(i) + (vList(j))
+    }
+    result.iterator
   }
 
   // generate inheritors from equivalent class
@@ -157,7 +169,6 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
     var result = for (i <- 0 to vList.length - 1;
       j <- i + 1 to vList.length - 1;
       if (vList(i).prefix == vList(j).prefix)) yield {
-
       vList(i).intersect(vList(j))
     }
     result = result.filter(x => x.support != 0)
@@ -171,11 +182,7 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
     var subSet = for (i <- 0 to superSet.length - 1;
       j <- i + 1 to superSet.length - 1;
       if (superSet(i).prefix == superSet(j).prefix)) yield {
-      if (superSet(i)._item == superSet(j)._item) {
-        superSet(i) + superSet(j)
-      } else {
-        superSet(i).intersect(superSet(j))
-      }
+      superSet(i).intersect(superSet(j))
     }
     subSet = subSet.filter(x => x.support >= _rminSup)
 
