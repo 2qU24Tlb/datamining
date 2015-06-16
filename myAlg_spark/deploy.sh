@@ -2,7 +2,7 @@
 
 SPARK_VERSION="spark-1.3.1-bin-hadoop2.6"
 HADOOP_VERSION="hadoop-2.6.0"
-HELIUM=(helium-01 helium-02 helium-03 helium-04 helium-05)
+HELIUM=(helium-01 helium-02 helium-03 helium-04)
 HADOOP_DIR="/tmp/hao/${HADOOP_VERSION}"
 SPARK_DIR="/tmp/hao/${SPARK_VERSION}"
 

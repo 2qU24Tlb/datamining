@@ -58,6 +58,8 @@ object Utils {
     if (debug)
       for (i <- result)
         println(i)
+    else
+      println("done!")
   }
 
   //function: write results to log file
@@ -243,7 +245,7 @@ object MyTest {
     // val minSup = 0.5
 
     val model = new SVTDriver(DB, minSup)
-    Utils.debug = true
+    Utils.debug = false
     model.run()
 
     sc.stop
