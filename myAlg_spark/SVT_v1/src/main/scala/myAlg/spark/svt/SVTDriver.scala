@@ -4,14 +4,14 @@
  author: Hao Zhang
  email: zhangh15@myumanitoba.ca
  ***/
-package myAlg.spark.svt
+package myAlg.spark.svt_v1
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD._
 import org.apache.spark.RangePartitioner
 
-object SVT {
+object MyTest {
   def main(args: Array[String]) {
 
     val sparkConf = new SparkConf().setAppName("Scale Vertical Mining")
@@ -102,7 +102,7 @@ object SVT {
     var i, j = 0
     val result = for (i <- 0 to value.length - 1; j <- i + 1 to value.length - 1) yield
       ((key ++ List(value(i)._1) ++ List(value(j)._1)).sorted,
-        (value(i)._2.-(value(j)._2)).distinct.sorted)
+        (value(i)._2.intersect(value(j)._2)).distinct.sorted)
     result.toList
   }
 
