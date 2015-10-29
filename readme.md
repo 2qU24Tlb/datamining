@@ -4,3 +4,5 @@
 * Apriori
 * eclat
 * declat
+
+# Bugs:
