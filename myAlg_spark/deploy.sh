@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
-SPARK_VERSION="spark-1.4.0-bin-hadoop2.6"
-HADOOP_VERSION="hadoop-2.6.0"
+SPARK="http://d3kbcqa49mib13.cloudfront.net/spark-1.5.1-bin-hadoop2.6.tgz"
+HADOOP="http://apache.sunsite.ualberta.ca/hadoop/common/hadoop-2.6.2/hadoop-2.6.2.tar.gz"
 WORKERS=(helium-01 helium-02 helium-03 helium-04 helium-05)
 WORKSPACE="/import/helium-share/csgrad/zhangh15"
 HADOOP_PREFIX="${WORKSPACE}/${HADOOP_VERSION}"

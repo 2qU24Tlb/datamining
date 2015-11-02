@@ -83,7 +83,7 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
     val _freq3itemsets = genKItemsets(_freq2itemsets, _rminSup).cache
     val _freq4itemsets = genKItemsets(_freq3itemsets, _rminSup).cache
     val _freq5itemsets = genKItemsets(_freq4itemsets, _rminSup).cache
-    val _EClass = rePartition(_freq5itemsets) 
+    val _EClass = rePartition(_freq5itemsets)
 
     // step 3
     val _freqSets = localVM(_EClass, _rminSup)
@@ -200,7 +200,7 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
   def genSets(iter: Iterator[VertItem]): Iterator[VertItem] = {
     var superSet = iter.toList
     var i, j = 0
-    
+
     var subSet = for (i <- 0 to superSet.length - 1;
       j <- i + 1 to superSet.length - 1;
       if (superSet(i).prefix == superSet(j).prefix)) yield {
