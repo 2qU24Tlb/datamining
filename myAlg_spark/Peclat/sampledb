@@ -1,0 +1,29 @@
+1 a   c d   f g   i       m     p
+2 a b c     f           l m   o
+3   b       f   h   j         o
+4   b c               k         p   s
+5 a   c   e f           l m n   p
+
+minSup = 3
+
+|a| = 3
+|b| = 3
+|c| = 4
+|f| = 4
+|m| = 3
+|p| = 3
+
+|ac| = 3
+|af| = 3
+|am| = 3
+|ap| = 3
+|cf| = 3
+|cm| = 3
+|cp| = 3
+|fm| = 3
+|fp| = 3
+
+|acf| = 3
+|acm| = 3
+|afm| = 3
+|cfm| = 3 
