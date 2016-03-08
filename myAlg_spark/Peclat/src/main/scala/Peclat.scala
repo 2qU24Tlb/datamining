@@ -1,26 +1,40 @@
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 
-class Item(val TIDs: Array[Long], val itemsets: Set[String]) extends Serializable {
+class Item(val items: Array[String], val tidSet: Set[Long]) extends Serializable {
   // mixset type, 0 for tidset and 1 for diffset
-  var ItemTyep: Int = 0
+  var tidType: Int = 0
+  var diffSet: Set[Long] = Set()
 
-  def this(TID: Long, itemset: String) = this(Array(TID), Set(itemset))
+  def this(item: String, tid: Long) = this(Array(item), Set(tid))
 
   def +(nextItem: Item): Item = {
-    new Item(this.TIDs ++ nextItem.TIDs, this.itemsets)
+    new Item(this.items, this.tidSet ++ nextItem.tidSet)
   }
 
   def sup(): Int = {
-    return TIDs.length
+    if (tidType == 1) {
+      return diffSet.size
+    }
+
+    return tidSet.size
   }
 
-  def optimze() {
-    //switch between tidset and diffset
+  // choose between tidset and diffset for a better performance
+  // just for first level ?
+  def optimize(allTrans: Set[Long]) {
+    diffSet = allTrans -- tidSet
+
+    if (diffSet.size < tidSet.size)
+      tidType = 1
   }
 
-  override def toString(): String =
-    "(" + this.itemsets.mkString + ":" + this.TIDs.mkString + ")"
+  override def toString(): String = {
+    if (tidType == 0)
+      "(" + this.items.mkString + ":" + this.tidSet.mkString + ")"
+    else
+      "(" + this.items.mkString + ":" + this.diffSet.mkString + ")"
+  }
 }
 
 object Peclat {
@@ -34,27 +48,28 @@ object Peclat {
     val minSupCount = math.ceil(transactions.count * minSup).toLong
   }
 
-  // convert transaction string to Item
+  // convert the transaction strings to Item
   def toItem(trans: Array[String], frequents: Array[String]): Array[Item] = {
     val TID = trans(0).toLong
-    val items = trans.drop(1)
+    val itemString = trans.drop(1)
 
-    val itemArray = for {item <- items
-                         if frequents.indexOf(item) > -1} yield (new Item(TID, item))
+    val itemArray = for {item <- itemString
+                         if frequents.indexOf(item) > -1} yield (new Item(item, TID))
     return itemArray
   }
 
   // get frequent items with their mixset
   def mrCountingItems(transactions: RDD[Array[String]], minSupCount: Long): RDD[Item] = {
-    val frequents = transactions.flatMap(trans => trans.drop(1).
-                                           map(item => (item, 1L))).reduceByKey(_+_).
-      filter(_._2 >= minSupCount).map(_._1).collect()
+    val frequents = transactions.flatMap(trans => trans.drop(1).map(item => (item, 1L))).
+      reduceByKey(_+_).filter(_._2 >= minSupCount).map(_._1).collect()
 
-    val f1_items = transactions.flatMap(trans => toItem(trans, frequents).
-                                          map(item => (item.itemsets.mkString, item))).reduceByKey(_+_).
-      filter(_._2.sup >= minSupCount).map(_._2).cache
+    val f1_items = transactions.flatMap(trans => toItem(trans, frequents).map(item => (item.items.mkString, item))).
+      reduceByKey(_+_).filter(_._2.sup >= minSupCount).map(_._2).cache
 
-    f1_items
+    val allTIDs = transactions.map(trans => trans(0).toLong).collect().toSet
+    f1_items.map(_.optimize(allTIDs))
+
+    return f1_items
   }
   //def mrLargeK
   //def mrMiningSubtree
