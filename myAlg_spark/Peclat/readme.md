@@ -5,6 +5,7 @@
 2. The author didn't talk about this determining K too much. Actually it's will effect the efficiency a lot. This variable will rely on the characteristics of the datasets. 
 3. The way to calculate minSup is not clearly elaborate. It is quite different for calculating minSup for tidset and diffset.
 4. It is expensive to get all the transaction ID.
+5. for mrLargeK, it is more efficient to get candidates on each partition before reducing rather than the whole list.
 
 sample DB:
 

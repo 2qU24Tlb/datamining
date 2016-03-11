@@ -31,9 +31,9 @@ class Item(val items: Array[String], val tidSet: Set[Long]) extends Serializable
 
   override def toString(): String = {
     if (tidType == 0)
-      "(" + this.items.mkString + ":" + this.tidSet.mkString + ")"
+      "(" + this.items.toList.sorted.mkString + ":" + this.tidSet.toList.sorted + ")"
     else
-      "(" + this.items.mkString + ":" + this.diffSet.mkString + ")"
+      "(" + this.items.toList.sorted.mkString + ":" + this.diffSet.toList.sorted + ")"
   }
 }
 
@@ -46,6 +46,21 @@ object Peclat {
     val transactions = data.map(s => s.trim.split("\\s+")).cache
     val minSup = 0.5 // user defined min support
     val minSupCount = math.ceil(transactions.count * minSup).toLong
+    val kCount = 2 // find all frequent k-itemsets
+  }
+
+  // get frequent items with their mixset
+  def mrCountingItems(transactions: RDD[Array[String]], minSupCount: Long): RDD[Item] = {
+    val frequents = transactions.flatMap(trans => trans.drop(1).map(item => (item, 1L))).
+      reduceByKey(_ + _).filter(_._2 >= minSupCount).map(_._1).collect()
+
+    val f1_items = transactions.flatMap(trans => toItem(trans, frequents).map(item => (item.items.mkString, item))).
+      reduceByKey(_ + _).filter(_._2.sup >= minSupCount).map(_._2).cache
+
+    val allTIDs = transactions.map(trans => trans(0).toLong).collect().toSet
+    f1_items.map(_.optimize(allTIDs))
+
+    return f1_items
   }
 
   // convert the transaction strings to Item
@@ -53,24 +68,26 @@ object Peclat {
     val TID = trans(0).toLong
     val itemString = trans.drop(1)
 
-    val itemArray = for {item <- itemString
-                         if frequents.indexOf(item) > -1} yield (new Item(item, TID))
+    val itemArray = for {
+      item <- itemString
+      if frequents.indexOf(item) > -1
+    } yield (new Item(item, TID))
     return itemArray
   }
 
-  // get frequent items with their mixset
-  def mrCountingItems(transactions: RDD[Array[String]], minSupCount: Long): RDD[Item] = {
-    val frequents = transactions.flatMap(trans => trans.drop(1).map(item => (item, 1L))).
-      reduceByKey(_+_).filter(_._2 >= minSupCount).map(_._1).collect()
-
-    val f1_items = transactions.flatMap(trans => toItem(trans, frequents).map(item => (item.items.mkString, item))).
-      reduceByKey(_+_).filter(_._2.sup >= minSupCount).map(_._2).cache
-
-    val allTIDs = transactions.map(trans => trans(0).toLong).collect().toSet
-    f1_items.map(_.optimize(allTIDs))
-
-    return f1_items
+  // get frequent k-itemsets
+  def mrLargeK(freItems: RDD[Item], kCount: Int): RDD[Item] = {
+    if (!freItems.isEmpty()) {
+      val tmp = freItems.map(_.items.toSet).cache()
+      val length = freItems.first().items.size
+      // [FixMe] maybe very slow for a large number to do Cartesian. eg. 100^100
+      val candidates = tmp.cartesian(tmp).map(item => item._1 ++ item._2).map((_,1)).reduceByKey(_+_).filter(_._2 == (length + 1) * length)
+    }
+    freItems
   }
-  //def mrLargeK
+
+  // generate candidates with item as key-value pairs.
+  // def matchCandidates(SuperSetlist, RDD[item]): RDD[(superSet, item)]
+
   //def mrMiningSubtree
 }
