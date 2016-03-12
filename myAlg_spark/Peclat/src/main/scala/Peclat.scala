@@ -58,6 +58,10 @@ object Peclat {
     val minSup = 0.5 // user defined min support
     val minSupCount = math.ceil(transactions.count * minSup).toLong
     val kCount = 2 // find all frequent k-itemsets
+
+    val f1_items = mrCountingItems(transactions, minSupCount)
+    val fk_items = mrLargeK(f1_items, kCount, minSupCount)
+    fk_items.collect()
   }
 
   // get frequent items with their mixset
@@ -92,19 +96,26 @@ object Peclat {
   // get frequent k-itemsets
   def mrLargeK(freItems: RDD[Item], kCount: Int, minSupCount: Long): RDD[Item] = {
     var freSubSet = freItems
+    var preFreSubSet = freSubSet
     var myCount = kCount
 
     while (myCount > 0) {
-      if (!freItems.isEmpty()) {
+      if (!freSubSet.isEmpty()) {
         val tmp = freItems.map(_.items.toSet).cache()
         val length = freItems.first().items.size
+
         // [FixMe] maybe very slow for a large number to do Cartesian. eg. 100^100
         val candidates = tmp.cartesian(tmp).map(item => item._1 ++ item._2).map((_,1)).
           reduceByKey(_+_).filter(_._2 == (length + 1) * length).map(_._1).collect
 
-        freSubSet = freItems.flatMap(genSuper(candidates, _)).reduceByKey(_ ++ _).map(_._2).filter(_.sup >= minSupCount)
+        preFreSubSet = freSubSet
+        freSubSet = freItems.flatMap(genSuper(candidates, _)).
+          reduceByKey(_ ++ _).map(_._2).filter(_.sup >= minSupCount)
       }
       myCount -= 1
+    }
+    if (freSubSet.isEmpty()) {
+      freSubSet = preFreSubSet
     }
     freSubSet
   }
