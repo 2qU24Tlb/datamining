@@ -106,8 +106,8 @@ object Peclat {
 
     while (myCount > 0) {
       if (!freSubSet.isEmpty()) {
-        val tmp = freItems.map(_.items.toSet).cache()
-        val length = freItems.first().items.size
+        val tmp = freSubSet.map(_.items.toSet).cache()
+        val length = freSubSet.first().items.size
 
         // [FixMe] maybe very slow for a large number to do Cartesian. eg. 100^100
         val candidates = tmp.cartesian(tmp).map(item => item._1 ++ item._2).map((_,1)).
@@ -118,7 +118,6 @@ object Peclat {
           reduceByKey(_ ++ _).map(_._2).filter(_.sup >= minSupCount)
       }
       myCount -= 1
-      println(myCount)
     }
     if (freSubSet.isEmpty()) {
       freSubSet = preFreSubSet
