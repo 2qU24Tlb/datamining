@@ -60,8 +60,15 @@ object Peclat {
     val kCount = 2 // find all frequent k-itemsets
 
     val f1_items = mrCountingItems(transactions, minSupCount)
+    println("Stage 1 completed!")
+
     val fk_items = mrLargeK(f1_items, kCount, minSupCount)
-    fk_items.collect()
+    val tmp = fk_items.collect()
+    for (x <- tmp) {
+      println(x)
+    }
+
+    // def mrMiningSubtrees
   }
 
   // get frequent items with their mixset
