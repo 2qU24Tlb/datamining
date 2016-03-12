@@ -54,7 +54,7 @@ object Peclat {
     val transactions = data.map(s => s.trim.split("\\s+")).cache
     val minSup = 0.5 // user defined min support
     val minSupCount = math.ceil(transactions.count * minSup).toLong
-    val kCount = 2 // find all frequent k-itemsets
+    val kCount = 5 // find all frequent k-itemsets
 
     val f1_items = mrCountingItems(transactions, minSupCount)
     println("Stage 1 completed!")
@@ -106,15 +106,15 @@ object Peclat {
 
     while (myCount > 0) {
       if (!freSubSet.isEmpty()) {
-        val tmp = freSubSet.map(_.items.toSet).cache()
         val length = freSubSet.first().items.size
+        val tmp = freSubSet.map(_.items.toSet).cache()
 
         // [FixMe] maybe very slow for a large number to do Cartesian. eg. 100^100
         val candidates = tmp.cartesian(tmp).map(item => item._1 ++ item._2).map((_,1)).
           reduceByKey(_+_).filter(_._2 == (length + 1) * length).map(_._1).collect
 
         preFreSubSet = freSubSet
-        freSubSet = freItems.flatMap(genSuper(candidates, _)).
+        freSubSet = freSubSet.flatMap(genSuper(candidates, _)).
           reduceByKey(_ ++ _).map(_._2).filter(_.sup >= minSupCount)
       }
       myCount -= 1
