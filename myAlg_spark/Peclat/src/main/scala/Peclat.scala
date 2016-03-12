@@ -41,10 +41,7 @@ class Item(val items: Array[String], val tidSet: Set[Long]) extends Serializable
   }
 
   override def toString(): String = {
-    if (tidType == 0)
-      "(" + this.items.toList.sorted.mkString + ":" + this.tidSet.toList.sorted + ")"
-    else
-      "(" + this.items.toList.sorted.mkString + ":" + this.diffSet.toList.sorted + ")"
+    "(" + this.items.toList.sorted.mkString + ":" + this.tidSet.toList.sorted + ")"
   }
 }
 
