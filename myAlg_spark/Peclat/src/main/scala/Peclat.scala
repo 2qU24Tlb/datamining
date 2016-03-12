@@ -64,6 +64,7 @@ object Peclat {
     for (x <- tmp) {
       println(x)
     }
+    println("Stage 2 completed!")
 
     // def mrMiningSubtrees
   }
@@ -117,6 +118,7 @@ object Peclat {
           reduceByKey(_ ++ _).map(_._2).filter(_.sup >= minSupCount)
       }
       myCount -= 1
+      println(myCount)
     }
     if (freSubSet.isEmpty()) {
       freSubSet = preFreSubSet
