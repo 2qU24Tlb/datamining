@@ -1,6 +1,9 @@
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 import scala.collection.immutable.Set
+import org.apache.spark.RangePartitioner
+import scala.collection.mutable.Map
+import scala.collection.mutable.ArrayBuffer
 
 class Item(val items: Array[String], val tidSet: Set[Long]) extends Serializable {
   // mixset type, 0 for tidset and 1 for diffset
@@ -26,6 +29,8 @@ class Item(val items: Array[String], val tidSet: Set[Long]) extends Serializable
 
     return sub
   }
+
+  def prefix(): Set[String] = items.take(items.size - 1).toSet
 
   def sup(): Int = {
     return tidSet.size
@@ -71,12 +76,13 @@ object Peclat {
 
   // get frequent items with their mixset
   def mrCountingItems(transactions: RDD[Array[String]], minSupCount: Long): RDD[Item] = {
-    // frequent 1-itemset
+    // frequent 1-item set
     val frequents = transactions.flatMap(trans => trans.drop(1).map(item => (item, 1L))).
       reduceByKey(_ + _).filter(_._2 >= minSupCount).map(_._1).collect()
 
     // frequent items
-    val f1_items = transactions.flatMap(trans => toItem(trans, frequents).map(item => (item.items.mkString, item))).
+    val f1_items = transactions.flatMap(trans => toItem(trans, frequents).
+                                          map(item => (item.items.mkString, item))).
       reduceByKey(_ + _).filter(_._2.sup >= minSupCount).map(_._2).cache
 
     // frequent mixset
@@ -102,22 +108,25 @@ object Peclat {
   def mrLargeK(freItems: RDD[Item], kCount: Int, minSupCount: Long): RDD[Item] = {
     var freSubSet = freItems
     var preFreSubSet = freSubSet
+    var length = 1 //cardinality of frequent itemset
     var myCount = kCount
 
     while (myCount > 0) {
       if (!freSubSet.isEmpty()) {
-        val length = freSubSet.first().items.size
         val tmp = freSubSet.map(_.items.toSet).cache()
 
         // [FixMe] maybe very slow for a large number to do Cartesian. eg. 100^100
         val candidates = tmp.cartesian(tmp).map(item => item._1 ++ item._2).map((_,1)).
-          reduceByKey(_+_).filter(_._2 == (length + 1) * length).map(_._1).collect
+          reduceByKey(_+_).
+          filter(item => (item._1.size == (length + 1)) && (item._2 == (length + 1) * length)).
+          map(_._1).collect
 
         preFreSubSet = freSubSet
         freSubSet = freSubSet.flatMap(genSuper(candidates, _)).
           reduceByKey(_ ++ _).map(_._2).filter(_.sup >= minSupCount)
       }
       myCount -= 1
+      length += 1
     }
     if (freSubSet.isEmpty()) {
       freSubSet = preFreSubSet
@@ -132,8 +141,60 @@ object Peclat {
     return superSet
   }
 
-  // generate candidates with item as key-value pairs.
-  // def matchCandidates(SuperSetlist, RDD[item]): RDD[(superSet, item)]
+  def mrMiningSubtree(freKItems: RDD[Item], minSupCount: Long): RDD[Item] = {
+    val EQClass = freKItems.keyBy(_.prefix().toList.sorted.mkString)
+    val EQClassCount = freKItems.map(item => (item.prefix(), 1)).reduceByKey(_+_).count().toInt
 
-  //def mrMiningSubtree
+    //re-partition
+    var freSubSet = EQClass.partitionBy(new RangePartitioner(EQClassCount, EQClass)).map(_._2).persist()
+    freSubSet = freSubSet.mapPartitions(mergerSame, true)
+    var preFreSubSet = freSubSet
+
+    while(!freSubSet.isEmpty()) {
+      preFreSubSet = freSubSet
+      freSubSet = freSubSet.mapPartitions(localMining)
+    }
+    freSubSet = preFreSubSet
+
+    return freSubSet
+  }
+
+  // merge items with same itemsets after re-shuffle
+  def mergerSame(iter: Iterator[Item]): Iterator[Item] = {
+    var itemList = Map[String, Item]()
+
+    while(iter.hasNext) {
+      var cur = iter.next
+      var itemKey = cur.items.toList.sorted.mkString
+      if (itemList.contains(itemKey)) {
+        itemList(itemKey) + cur
+      } else {
+        itemList += (itemKey -> cur)
+      }
+    }
+
+    return itemList.values.iterator
+  }
+
+  // local E/D-clat mining
+  def localMining(iter: Iterator[Item]): Iterator[Item] = {
+    var itemMap = Map[String, ArrayBuffer[Item]]()
+    val results = ArrayBuffer.empty[Item]
+
+    while(iter.hasNext) {
+      var cur = iter.next
+      var itemKey = cur.prefix().toList.sorted.mkString
+      if (itemMap.contains(itemKey)) {
+        for (prev <- itemMap(itemKey)) {
+          results += (prev ++ cur)
+        }
+        itemMap(itemKey) +=  cur
+      } else {
+        itemMap += (itemKey -> ArrayBuffer(cur))
+      }
+    }
+
+    return results.iterator
+  }
+
 }

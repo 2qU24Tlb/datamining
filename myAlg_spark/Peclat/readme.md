@@ -6,6 +6,7 @@
 3. The way to calculate minSup is not clearly elaborate. It is quite different for calculating minSup for tidset and diffset.
 4. It is expensive to get all the transaction ID.
 5. for mrLargeK, it is more efficient to get candidates on each partition before reducing rather than the whole list.
+6. for mrMiningSubtree, we can reduce the number of partitions by using coalesce.
 
 sample DB:
 
