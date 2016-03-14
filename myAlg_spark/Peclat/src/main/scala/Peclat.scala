@@ -55,23 +55,24 @@ object Peclat {
     val conf = new SparkConf().setAppName("Peclat")
     val sc = new SparkContext(conf)
 
-    val data = sc.textFile("file:/tmp/sampledb", 2)
+    val data = sc.textFile("file:/tmp/BMS1_itemset_mining_numed.txt")
     val transactions = data.map(s => s.trim.split("\\s+")).cache
-    val minSup = 0.5 // user defined min support
+    val minSup = 0.001 // user defined min support
     val minSupCount = math.ceil(transactions.count * minSup).toLong
-    val kCount = 5 // find all frequent k-itemsets
+    val kCount = 3 // find all frequent k-itemsets
 
     val f1_items = mrCountingItems(transactions, minSupCount)
-    println("Stage 1 completed!")
+    println("Stage 1 completed! " + f1_items.count().toString() + " number of frequent items")
 
     val fk_items = mrLargeK(f1_items, kCount, minSupCount)
-    val tmp = fk_items.collect()
-    for (x <- tmp) {
-      println(x)
-    }
-    println("Stage 2 completed!")
+    println("Stage 2 completed! " + fk_items.count().toString() + " number of frequent items")
+    // val tmp = fk_items.collect()
+    // for (x <- tmp) {
+    //   println(x)
+    // }
 
-    // def mrMiningSubtrees
+    val results = mrMiningSubtree(fk_items, minSupCount)
+    println("Stage 3 completed! " + results.count().toString() + " number of frequent items")
   }
 
   // get frequent items with their mixset
