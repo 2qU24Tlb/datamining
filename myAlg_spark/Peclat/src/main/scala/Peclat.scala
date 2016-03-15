@@ -57,7 +57,7 @@ object Peclat {
 
     val data = sc.textFile("file:/tmp/BMS1_itemset_mining_numed.txt")
     val transactions = data.map(s => s.trim.split("\\s+")).cache
-    val minSup = 0.001 // user defined min support
+    val minSup = 0.002 // user defined min support
     val minSupCount = math.ceil(transactions.count * minSup).toLong
     val kCount = 3 // find all frequent k-itemsets
 
@@ -102,6 +102,7 @@ object Peclat {
       item <- itemString
       if frequents.indexOf(item) > -1
     } yield (new Item(item, TID))
+
     return itemArray
   }
 
@@ -132,7 +133,8 @@ object Peclat {
     if (freSubSet.isEmpty()) {
       freSubSet = preFreSubSet
     }
-    freSubSet
+
+    return freSubSet
   }
 
   // generate all the super set for this item
