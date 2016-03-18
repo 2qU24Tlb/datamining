@@ -1,9 +1,9 @@
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
-import scala.collection.immutable.Set
-import org.apache.spark.RangePartitioner
+//import org.apache.spark.RangePartitioner
 import scala.collection.mutable.Map
 import scala.collection.mutable.ArrayBuffer
+import scala.collection.immutable.Set
 
 class Item(val items: Array[String], val tidSet: Set[Long]) extends Serializable {
   // mixset type, 0 for tidset and 1 for diffset
@@ -62,35 +62,31 @@ object Peclat {
     val kCount = 3 // find all frequent k-itemsets
 
     val f1_items = mrCountingItems(transactions, minSupCount)
-    println("Stage 1 completed! " + f1_items.count().toString() + " number of frequent items")
+    println("Stage 1 completed! " + f1_items.size + " number of frequent items")
 
-    val fk_items = mrLargeK(f1_items, kCount, minSupCount)
-    println("Stage 2 completed! " + fk_items.count().toString() + " number of frequent items")
-    // val tmp = fk_items.collect()
-    // for (x <- tmp) {
-    //   println(x)
-    // }
+    // val fk_items = mrLargeK(f1_items, kCount, minSupCount)
+    // println("Stage 2 completed! " + fk_items.count().toString() + " number of frequent items")
 
-    val results = mrMiningSubtree(fk_items, minSupCount)
-    println("Stage 3 completed! " + results.count().toString() + " number of frequent items")
+    // val results = mrMiningSubtree(fk_items, minSupCount)
+    // println("Stage 3 completed! " + results.count().toString() + " number of frequent items")
   }
 
   // get frequent items with their mixset
-  def mrCountingItems(transactions: RDD[Array[String]], minSupCount: Long): RDD[Item] = {
+  def mrCountingItems(transactions: RDD[Array[String]], minSupCount: Long): Array[String] = {
     // frequent 1-item set
     val frequents = transactions.flatMap(trans => trans.drop(1).map(item => (item, 1L))).
       reduceByKey(_ + _).filter(_._2 >= minSupCount).map(_._1).collect()
 
     // frequent items
-    val f1_items = transactions.flatMap(trans => toItem(trans, frequents).
-                                          map(item => (item.items.mkString, item))).
-      reduceByKey(_ + _).filter(_._2.sup >= minSupCount).map(_._2).cache
+    // val f1_items = transactions.flatMap(trans => toItem(trans, frequents).
+    //                                       map(item => (item.items.mkString, item))).
+    //   reduceByKey(_ + _).filter(_._2.sup >= minSupCount).map(_._2).cache
 
     // frequent mixset
-    val allTIDs = transactions.map(trans => trans(0).toLong).collect().toSet
-    f1_items.map(_.optimize(allTIDs))
+    // val allTIDs = transactions.map(trans => trans(0).toLong).collect().toSet
+    // f1_items.map(_.optimize(allTIDs))
 
-    return f1_items
+    return frequents
   }
 
   // convert the transaction strings to Item
