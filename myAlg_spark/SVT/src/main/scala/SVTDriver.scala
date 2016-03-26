@@ -1,5 +1,3 @@
-package myAlg.spark.svt
-
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 import scala.collection.mutable.ArrayBuffer
