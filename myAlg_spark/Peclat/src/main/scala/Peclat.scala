@@ -58,6 +58,8 @@ object Peclat {
 
     val results = mrMiningSubtree(fk_items, minSupCount)
     println("Stage 3 completed! " + results.count().toString() + " number of frequent items")
+
+    sc.stop
   }
 
   // get frequent items with their mixset

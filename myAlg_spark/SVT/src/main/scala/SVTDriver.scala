@@ -6,36 +6,87 @@ import org.apache.spark.RangePartitioner
 
 
 // start of data structure
-class VertItem(item: Array[Long], TIDs: Array[Long]) extends Serializable {
-  val _item = item.sorted
+class Item(val items: Array[String], val TIDs: Set[Long], val sup: Long) extends Serializable {
+  val prefix = items.take(items.size - 1).mkString
+  var tidType: Int = 1 // 1 for tidSet, 2 for diffSet
 
-  val _TIDs = TIDs.sorted
-  val prefix = (_item.take(_item.length - 1).mkString(","))
-  var support = TIDs.length
+  def this(item: String, TID: Long) = this(Array(item), Set(TID), 1l)
 
-  def +(another: VertItem) = {
-    new VertItem(this._item, (this._TIDs ++ another._TIDs).distinct.sorted)
+  def +(another: Item): Item = {
+    new Item(this.items, this.TIDs ++ another.TIDs, this.sup + another.sup)
   }
-  def intersect(another: VertItem) = {
-    new VertItem((this._item ++ another._item).distinct.sorted,
-      (this._TIDs.intersect(another._TIDs)).sorted)
-  }
-  // if superset is not using diff form
-  def diff(another: VertItem): VertItem = {
-    val newItem = new VertItem((this._item ++ another._item).distinct.sorted,
-      (this._TIDs.diff(another._TIDs)).sorted)
-    newItem.support = this.support - newItem.support
-    newItem
-  }
-  // if superset is already using diff form
-  def diff2(another: VertItem): VertItem = {
-    val newItem = new VertItem((this._item ++ another._item).distinct.sorted,
-      (another._TIDs.diff(this._TIDs)).sorted)
-    newItem.support = this.support - newItem.support
-    newItem
-  }
+
   override def toString(): String = {
-    "(" + _item.mkString(",") + ")" + ":" + _TIDs.mkString(",")
+    "(" + this.items.mkString + ":" + this.TIDs.toList.sorted.mkString + ")"
+  }
+}
+
+// start of test
+object SVT {
+  def main(args: Array[String]) {
+    val conf = new SparkConf().setAppName("SVT")
+    val sc = new SparkContext(conf)
+
+    Utils.debug = false
+
+    // args(0) for transactions, args(1) for minSup
+    val data = sc.textFile("file:/tmp/sampledb")
+    val transactions = data.map(s => s.trim.split("\\s+")).cache
+    val minSup = 0.5 // user defined min support
+    val minSupCount = math.ceil(transactions.count * minSup).toLong
+
+    val f1_items = genFreqSingletons(transactions, minSupCount).cache()
+
+    sc.stop
+  }
+
+  def genFreqSingletons(transactions: RDD[Array[String]], minSupCount: Long): RDD[Item] = {
+    val f1_items = transactions.flatMap(toItem(_).map(item => (item.items.mkString, item))).
+      reduceByKey(_ + _).filter(_._2.sup >= minSupCount).map(_._2)
+
+    return f1_items
+  }
+
+  // convert the transaction string to Item
+  def toItem(trans: Array[String]): Array[Item] = {
+    val TID = trans(0).toLong
+    val itemString = trans.drop(1)
+
+    val itemArray = for {
+      item <- itemString
+    } yield (new Item(item, TID))
+
+    return itemArray
+  }
+
+  def genKItemsets(freItems: RDD[Item], kCount: Int, minSupCount: Long): RDD[Item] = {
+    return freItems
+  }
+
+  def genKCandidets(superSet: Array[Array[String]]): Array[Array[String]] = {
+    val k = superSet(0).length + 1
+    var result = ArrayBuffer[Array[String]]()
+
+    if (k == 2) {
+
+      for (i <- 0 to superSet.size - 1; j <- i+1 to superSet.size - 1)
+        result += (superSet(i) ++ superSet(j)).sorted
+
+    } else {
+
+      var itemMap = Map[String, ArrayBuffer[Array[String]]]()
+      for ( i <- superSet) {
+
+        val prefix = i.take(k-2).mkString
+        if (itemMap.contains(prefix))
+          for (j <- itemMap(prefix))
+            result += (i.toSet ++ j.toSet).toArray.sorted
+        else
+          itemMap += (prefix -> ArrayBuffer(i))
+      }
+    }
+
+    return result.toArray
   }
 }
 
@@ -61,7 +112,7 @@ object Utils {
       println("done!")
   }
 
-  //function: write results to log file
+  //[Todo]function: write results to log file
 }
 
 // start of driver section
@@ -240,22 +291,5 @@ class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializ
     }
 
     subSet.iterator
-  }
-}
-
-// start of test
-object MyTest {
-  def main(args: Array[String]) {
-    val conf = new SparkConf().setAppName("Scale Vertical Mining example")
-    val sc = new SparkContext(conf)
-
-    val DB = sc.textFile(args(0)).map(_.split("\\s+").map(_.toLong)).cache
-    val minSup = args(1).toDouble
-
-    val model = new SVTDriver(DB, minSup)
-    Utils.debug = false
-    model.run()
-
-    sc.stop
   }
 }
