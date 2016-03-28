@@ -26,7 +26,8 @@ class Item(val items: Array[String], val TIDs: Set[Long], val sup: Long) extends
   }
 
   override def toString(): String = {
-    "(" + this.items.mkString(".") + ":" + this.TIDs.toList.sorted.mkString("_") + ")"
+    //"(" + this.items.mkString(".") + ":" + this.TIDs.toList.sorted.mkString("_") + ")"
+    "(" + this.items.mkString(".") + ":" + this.TIDs.size.toString() + ")"
   }
 }
 
@@ -39,7 +40,7 @@ object SVT {
     Utils.debug = true
 
     // args(0) for transactions, args(1) for minSup
-    val data = sc.textFile("file:/tmp/retail_lined.txt")
+    val data = sc.textFile("file:/tmp/mushrooms_lined.txt")
     val transactions = data.map(s => s.trim.split("\\s+")).cache
     val trans_num = transactions.count
     val minSup = args(0).toDouble // user defined min support
@@ -49,13 +50,13 @@ object SVT {
     println("number of transactions: " + trans_num.toString() + "\n")
 
     val f1_items = genFreqSingletons(transactions, minSupCount)
-    Utils.showResult("singletons: ", f1_items)
+    //Utils.showResult("singletons: ", f1_items)
 
     val fk_items = genKItemsets(f1_items, kCount, minSupCount)
-    Utils.showResult("Equivalent Class: ", fk_items)
+    //Utils.showResult("Equivalent Class: ", fk_items)
 
     val fre_items = paraMining(fk_items, minSupCount)
-    Utils.showResult("Number of frequent itemsets: ", fre_items)
+    Utils.showResult("Number of closed frequent itemsets: ", fre_items)
 
     sc.stop
   }
@@ -120,9 +121,12 @@ object SVT {
       var itemMap = Map[String, ArrayBuffer[Array[String]]]()
       for ( i <- superSet) {
         val prefix = i.take(k-2).mkString
-        if (itemMap.contains(prefix))
-          for (j <- itemMap(prefix))
+        if (itemMap.contains(prefix)) {
+          for (j <- itemMap(prefix)) {
             result += (i.toSet ++ j.toSet).toArray.sorted
+          }
+          itemMap(prefix) += i
+        }
         else
           itemMap += (prefix -> ArrayBuffer(i))
       }
@@ -205,7 +209,6 @@ object Utils {
     if (debug) {
       val results = freKitems.collect()
       println(label + results.length.toString())
-
       for (i <- results)
         println(i)
       println()

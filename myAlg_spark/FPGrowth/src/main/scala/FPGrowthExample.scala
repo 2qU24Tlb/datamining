@@ -74,9 +74,16 @@ object FPGrowthExample {
 
     println(s"Number of frequent itemsets: ${model.freqItemsets.count()}")
 
-    val result = model.freqItemsets.collect()
+    var results = model.freqItemsets.collect()
+    var max = 0
 
-    model.freqItemsets.collect().foreach { itemset =>
+    for (i <- results) {
+      if (i.items.size > max)
+        max = i.items.size
+    }
+    results = results.filter(_.items.size == max)
+
+    results.foreach { itemset =>
       println(itemset.items.mkString("[", ",", "]") + ", " + itemset.freq)
     }
 

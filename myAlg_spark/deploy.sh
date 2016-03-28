@@ -51,24 +51,35 @@ function run {
     APP=$1
     CMD="/usr/local/spark/bin/spark-submit "
     MASTER="spark://DOMBA-03.cs.umanitoba.ca:7077"
-    #DB="/tmp/retail_lined.txt"
-    DB="/tmp/retail.txt"
-    MINSUP="0.05"
+    DB="/tmp/mushrooms.txt"
+    MINSUP="0.1"
     CONF="--executor-memory 20G --conf spark.eventLog.enabled=true"
 
-    echo $APP
-
     if [ $APP == "svt" ]; then
+        echo "running SVT..."
         ${CMD} --class "SVT" \
                --master ${MASTER} ${CONF} \
                $PWD/SVT/target/scala-2.10/svt_2.10-3.0.jar \
                ${MINSUP}
-    elif [ $APP = "fp" ]; then
-        ${CMD} --class org.apache.spark.examples.mllib.FPGrowthExample \
+    elif [ $APP = "pfp" ]; then
+        echo "running PFP..."
+        ${CMD} --class FPGrowthExample \
                --master ${MASTER} ${CONF} \
-               /usr/local/spark/lib/spark-examples-1.6.1-hadoop2.6.0.jar \
+               $PWD/FPGrowth/target/scala-2.10/FPGrowthExample-assembly-1.0.jar \
                --minSupport ${MINSUP} \
                ${DB}
+    fi
+}
+
+function compile {
+    APP=$1
+
+    if [ $APP == "svt" ]; then
+        echo "compile svt..."
+        cd $PWD/SVT; sbt package
+    elif [ $APP == "pfp" ]; then
+        echo "compiling PFP-Growth..."
+        cd $PWD/FPGrowth; sbt compile && sbt assembly
     fi
 }
 
@@ -82,4 +93,6 @@ elif [ $1 == "stop" ]; then
     stop
 elif [ $1 == "run" ]; then
     run $2
+elif [ $1 == "compile" ]; then
+    compile $2
 fi
