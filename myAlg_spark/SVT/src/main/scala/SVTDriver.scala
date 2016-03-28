@@ -1,7 +1,7 @@
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 import scala.collection.mutable.ArrayBuffer
-import scala.collection.mutable.HashMap
+import scala.collection.mutable.Map
 import org.apache.spark.RangePartitioner
 
 
@@ -16,8 +16,17 @@ class Item(val items: Array[String], val TIDs: Set[Long], val sup: Long) extends
     new Item(this.items, this.TIDs ++ another.TIDs, this.sup + another.sup)
   }
 
+  def &(another: Item): Item = {
+    val newTIDs = this.TIDs & another.TIDs
+    val newItems = (this.items.toSet ++
+                      another.items.toSet).toArray.sorted
+    val newSup = newTIDs.size.toLong
+
+    return new Item(newItems, newTIDs, newSup)
+  }
+
   override def toString(): String = {
-    "(" + this.items.mkString + ":" + this.TIDs.toList.sorted.mkString + ")"
+    "(" + this.items.mkString(".") + ":" + this.TIDs.toList.sorted.mkString("_") + ")"
   }
 }
 
@@ -27,56 +36,89 @@ object SVT {
     val conf = new SparkConf().setAppName("SVT")
     val sc = new SparkContext(conf)
 
-    Utils.debug = false
+    Utils.debug = true
 
     // args(0) for transactions, args(1) for minSup
-    val data = sc.textFile("file:/tmp/sampledb")
+    val data = sc.textFile("file:/tmp/retail_lined.txt")
     val transactions = data.map(s => s.trim.split("\\s+")).cache
-    val minSup = 0.5 // user defined min support
-    val minSupCount = math.ceil(transactions.count * minSup).toLong
+    val trans_num = transactions.count
+    val minSup = args(0).toDouble // user defined min support
+    val minSupCount = math.ceil(minSup * trans_num).toLong
+    val kCount = 3 // find all frequent k-itemsets
 
-    val f1_items = genFreqSingletons(transactions, minSupCount).cache()
+    println("number of transactions: " + trans_num.toString() + "\n")
+
+    val f1_items = genFreqSingletons(transactions, minSupCount)
+    Utils.showResult("singletons: ", f1_items)
+
+    val fk_items = genKItemsets(f1_items, kCount, minSupCount)
+    Utils.showResult("Equivalent Class: ", fk_items)
+
+    val fre_items = paraMining(fk_items, minSupCount)
+    Utils.showResult("Number of frequent itemsets: ", fre_items)
 
     sc.stop
   }
 
   def genFreqSingletons(transactions: RDD[Array[String]], minSupCount: Long): RDD[Item] = {
-    val f1_items = transactions.flatMap(toItem(_).map(item => (item.items.mkString, item))).
-      reduceByKey(_ + _).filter(_._2.sup >= minSupCount).map(_._2)
+    val f1_items = transactions.flatMap(toItem(_)).
+      reduceByKey(_ + _).
+      filter(_._2.sup >= minSupCount).map(_._2).cache()
 
     return f1_items
   }
 
   // convert the transaction string to Item
-  def toItem(trans: Array[String]): Array[Item] = {
+  def toItem(trans: Array[String]): Array[(String, Item)] = {
     val TID = trans(0).toLong
     val itemString = trans.drop(1)
 
     val itemArray = for {
       item <- itemString
-    } yield (new Item(item, TID))
+    } yield {(item, new Item(item, TID))}
 
     return itemArray
   }
 
   def genKItemsets(freItems: RDD[Item], kCount: Int, minSupCount: Long): RDD[Item] = {
-    return freItems
+    var freSubSet = freItems
+    var preFreSubSet = freSubSet
+    var myCount = kCount
+
+    while (myCount > 0) {
+      if (!freSubSet.isEmpty()) {
+        preFreSubSet = freSubSet
+
+        val preFreSet = freSubSet.map(_.items).collect()
+        val candidates = genKCandidets(preFreSet)
+
+        freSubSet = freSubSet.flatMap(genSubSets(_, candidates)).
+          reduceByKey(_&_).
+          filter(_._2.sup >= minSupCount).map(_._2).cache()
+      }
+
+      myCount -= 1
+    }
+
+    if (freSubSet.isEmpty()) {
+      freSubSet = preFreSubSet
+    }
+
+    return freSubSet
   }
 
+  // generate all the candidates from previous frequent items
   def genKCandidets(superSet: Array[Array[String]]): Array[Array[String]] = {
     val k = superSet(0).length + 1
     var result = ArrayBuffer[Array[String]]()
 
     if (k == 2) {
-
-      for (i <- 0 to superSet.size - 1; j <- i+1 to superSet.size - 1)
+      for (i <- 0 to superSet.size - 1;
+           j <- i+1 to superSet.size - 1)
         result += (superSet(i) ++ superSet(j)).sorted
-
     } else {
-
       var itemMap = Map[String, ArrayBuffer[Array[String]]]()
       for ( i <- superSet) {
-
         val prefix = i.take(k-2).mkString
         if (itemMap.contains(prefix))
           for (j <- itemMap(prefix))
@@ -88,208 +130,89 @@ object SVT {
 
     return result.toArray
   }
+
+  // link items with their corresponding candidates
+  def genSubSets(curItem: Item, candidates: Array[Array[String]]): Array[(String, Item)] = {
+    var equivClass = Array[Array[String]]()
+
+    if (curItem.items.length == 1)
+      equivClass = candidates.filter(_.contains(curItem.items.last))
+    else {
+      val prefix = curItem.prefix
+      equivClass = candidates.filter(_.mkString.startsWith(prefix)).
+        filter(_.contains(curItem.items.last))
+    }
+
+    val result = for (item <- equivClass) yield {(item.mkString, curItem)}
+
+    return result
+  }
+
+  // parallel vertical mining
+  def paraMining(freKitems: RDD[Item], minSupCount: Long): RDD[Item] = {
+    val EQClass = freKitems.keyBy(_.prefix)
+    val EQClassCount = freKitems.map(item => (item.prefix, 1)).
+      reduceByKey(_+_).count().toInt
+
+    //re-partition
+    var freSubSet = EQClass.partitionBy(
+      new RangePartitioner(EQClassCount, EQClass)).
+      map(_._2).persist()
+
+    var preFreSubSet = freSubSet
+
+    while(!freSubSet.isEmpty()) {
+      preFreSubSet = freSubSet
+      freSubSet = freSubSet.mapPartitions(localMining).
+        filter(_.sup >= minSupCount).cache()
+    }
+    freSubSet = preFreSubSet
+
+    return freSubSet
+  }
+
+  // local E/D-clat mining
+  def localMining(iter: Iterator[Item]): Iterator[Item] = {
+    var itemMap = Map[String, ArrayBuffer[Item]]()
+    val results = ArrayBuffer.empty[Item]
+
+    while(iter.hasNext) {
+      var cur = iter.next
+      var itemKey = cur.prefix
+      if (itemMap.contains(itemKey)) {
+        for (prev <- itemMap(itemKey)) {
+          results += (prev & cur)
+        }
+        itemMap(itemKey) +=  cur
+      } else {
+        itemMap += (itemKey -> ArrayBuffer(cur))
+      }
+    }
+
+    return results.iterator
+  }
 }
 
 object Utils {
   var debug = false
-  var result = ArrayBuffer[String] ()
 
   // check partition status
   def checkParttion[T] (part: RDD[T]) {
     part.mapPartitionsWithIndex((idx, itr) => itr.map(s => (idx, s))).collect.foreach(println)
   }
 
-  def addResult(item: String) {
-    if (debug)
-      result.append(item)
-  }
+  def showResult(label: String, freKitems: RDD[Item]) {
+    if (debug) {
+      val results = freKitems.collect()
+      println(label + results.length.toString())
 
-  def showResult() {
-    if (debug)
-      for (i <- result)
+      for (i <- results)
         println(i)
+      println()
+    }
     else
       println("done!")
   }
 
   //[Todo]function: write results to log file
-}
-
-// start of driver section
-class SVTDriver(transactions: RDD[Array[Long]], minSup: Double) extends Serializable {
-  val _dbLength: Long = transactions.count
-  val _rminSup: Long = (minSup * _dbLength).ceil.toLong
-  var partitionSize: Int = 0
-
-  def run() {
-    println("Number of Transactions: " + _dbLength.toString)
-
-    // step 1
-    val _freq1Items = genFreqSingletons(transactions, _rminSup).cache
-
-    // step 2
-    val _freq2itemsets = genKItemsets(_freq1Items, _rminSup).cache
-    val _freq3itemsets = genKItemsets(_freq2itemsets, _rminSup).cache
-    val _freq4itemsets = genKItemsets(_freq3itemsets, _rminSup).cache
-    val _freq5itemsets = genKItemsets(_freq4itemsets, _rminSup).cache
-    val _EClass = rePartition(_freq5itemsets)
-
-    // step 3
-    val _freqSets = localVM(_EClass, _rminSup)
-
-    Utils.showResult
-  }
-
-  //generate local frequent items in each partition
-  def genFreqSingletons(DB: RDD[Array[Long]], rminSup: Long): RDD[VertItem] = {
-    val _localItems = DB.mapPartitions(genItems)
-    val _globalItems = _localItems
-      .map(x => (x._1, x._2.length))
-      .reduceByKey(_ + _)
-      .filter(_._2 >= rminSup)
-      .map(_._1)
-      .collect
-
-    _globalItems.foreach(println)
-
-    val localResult =  _localItems.filter(x => _globalItems.contains(x._1))
-      .map(x => new VertItem(Array(x._1), x._2))
-    localResult
-  }
-
-  // generate first level of equivalent class from singletons
-  def genKItemsets(singletons: RDD[VertItem], rminSup: Long): RDD[VertItem] = {
-    val _localEclass  = singletons.mapPartitions(genEclass)
-    val _globalItems = _localEclass
-      .map(x => (x._item.mkString(","), x.support))
-      .reduceByKey(_ + _)
-      .filter(_._2 >= rminSup)
-      .map(_._1)
-      .collect
-
-    partitionSize = _globalItems.length
-    _globalItems.foreach(println)
-
-    val localFrequent =  _localEclass.filter(
-      x => _globalItems.contains(x._item.mkString(",")))
-    localFrequent
-  }
-
-  def rePartition(kItemsets: RDD[VertItem]): RDD[VertItem]={
-    // [BugFix] we need to calculate the size of freqEclass that fits the memory
-    val reMap = kItemsets.keyBy(x => x.prefix)
-    val localResult = reMap.partitionBy(
-      new RangePartitioner[String, VertItem](kItemsets.count.toInt, reMap))
-      .map(_._2)
-      .mapPartitions(combineSame)
-      .map(_._2)
-
-    localResult
-  }
-
-  // combine same items in a same partition
-  def combineSame(iter: Iterator[VertItem]): Iterator[(String, VertItem)] = {
-    val _EclassList = HashMap.empty[String, VertItem]
-
-    while (iter.hasNext) {
-      var cur = iter.next
-      var key = cur._item.mkString(",")
-
-      if (_EclassList.contains(key)) {
-        _EclassList += (key -> (_EclassList(key) + cur))
-      } else {
-        _EclassList += (key -> cur)
-      }
-    }
-    _EclassList.toList.iterator
-  }
-
-  // generate inheritors from equivalent class
-  def localVM(Eclass: RDD[VertItem], rminSup: Long): RDD[VertItem] = {
-    val _localEclass  = Eclass.mapPartitions(genSets)
-    _localEclass.map(x => x._item.mkString(",")+":"+x.support.toString).collect.foreach(println)
-
-    _localEclass
-  }
-
-  // transform horizontal database to vertical form
-  def genItems(iter: Iterator[Array[Long]]) : Iterator[(Long, Array[Long])] = {
-    val _item2TID = HashMap.empty[Long, ArrayBuffer[Long]]
-
-    var cur = Array[Long]()
-    while (iter.hasNext) {
-      cur = iter.next
-      for (i <- cur.tail) {
-        if (_item2TID.contains(i))
-          _item2TID(i).append(cur.head)
-        else
-          _item2TID  += (i -> ArrayBuffer(cur.head))
-      }
-    }
-    val _result = _item2TID.toList
-      .sortBy(x => x._1)
-      .map(x => (x._1, x._2.toArray))
-
-    _result.iterator
-  }
-
-  def genEclass(iter: Iterator[VertItem]): Iterator[VertItem] = {
-    val vList = iter.toList
-    var i, j = 0
-
-    var result = for (i <- 0 to vList.length - 1;
-      j <- i + 1 to vList.length - 1;
-      if (vList(i).prefix == vList(j).prefix)) yield {
-      vList(i).intersect(vList(j))
-    }
-    result = result.filter(x => x.support != 0)
-    result.iterator
-  }
-
-  def genSets(iter: Iterator[VertItem]): Iterator[VertItem] = {
-    var superSet = iter.toList
-    var i, j = 0
-
-    var subSet = for (i <- 0 to superSet.length - 1;
-      j <- i + 1 to superSet.length - 1;
-      if (superSet(i).prefix == superSet(j).prefix)) yield {
-      superSet(i).intersect(superSet(j))
-    }
-    subSet = subSet.filter(x => x.support >= _rminSup)
-
-    // 0 -- will use eclat
-    // 1 -- will use declat, superset is using intersection
-    // 2 -- will use declat, superset is using differences
-    var declat = 0
-
-    while(subSet.length > 1) {
-      if (declat == 0) {
-        // calculate the density of database
-        if (subSet.length * 2 >= superSet.length) {
-          declat = 1
-        }
-      }
-      superSet = subSet.toList
-
-      subSet = for (i <- 0 to superSet.length - 1;
-        j <- i + 1 to superSet.length - 1;
-        if (superSet(i).prefix == superSet(j).prefix)) yield {
-        if (declat == 0) {
-          superSet(i).intersect(superSet(j))
-        } else if (declat == 1){
-          superSet(i).diff(superSet(j))
-        } else {
-          superSet(i).diff2(superSet(j))
-        }
-      }
-
-      subSet = subSet.filter(x => x.support >= _rminSup)
-
-      if (declat == 1) {
-        declat = 2
-      }
-    }
-
-    subSet.iterator
-  }
 }

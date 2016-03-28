@@ -140,7 +140,7 @@ object Peclat {
     return result.toArray
   }
 
-  // generate all the super set for this item
+  // generate all the sub sets for this item base on candidates
   def genSubSets(curItem: Item, candidates: Array[Array[String]]): Array[Item] = {
     var equivClass = Array[Array[String]]()
 

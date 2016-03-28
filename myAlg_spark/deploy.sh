@@ -47,6 +47,31 @@ function stop {
     echo "Stop Done!"
 }
 
+function run {
+    APP=$1
+    CMD="/usr/local/spark/bin/spark-submit "
+    MASTER="spark://DOMBA-03.cs.umanitoba.ca:7077"
+    #DB="/tmp/retail_lined.txt"
+    DB="/tmp/retail.txt"
+    MINSUP="0.05"
+    CONF="--executor-memory 20G --conf spark.eventLog.enabled=true"
+
+    echo $APP
+
+    if [ $APP == "svt" ]; then
+        ${CMD} --class "SVT" \
+               --master ${MASTER} ${CONF} \
+               $PWD/SVT/target/scala-2.10/svt_2.10-3.0.jar \
+               ${MINSUP}
+    elif [ $APP = "fp" ]; then
+        ${CMD} --class org.apache.spark.examples.mllib.FPGrowthExample \
+               --master ${MASTER} ${CONF} \
+               /usr/local/spark/lib/spark-examples-1.6.1-hadoop2.6.0.jar \
+               --minSupport ${MINSUP} \
+               ${DB}
+    fi
+}
+
 if [ $1 == "clean" ]; then
     clean
 elif [ $1 == "install" ]; then
@@ -55,4 +80,6 @@ elif [ $1 == "start" ]; then
     start
 elif [ $1 == "stop" ]; then
     stop
+elif [ $1 == "run" ]; then
+    run $2
 fi
