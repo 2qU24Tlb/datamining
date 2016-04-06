@@ -40,12 +40,12 @@ object SVT {
     Utils.debug = true
 
     // args(0) for transactions, args(1) for minSup
-    val data = sc.textFile("file:/tmp/mushrooms_lined.txt")
+    val data = sc.textFile("file:/tmp/pumsb_star_lined.dat")
     val transactions = data.map(s => s.trim.split("\\s+")).cache
     val trans_num = transactions.count
     val minSup = args(0).toDouble // user defined min support
     val minSupCount = math.ceil(minSup * trans_num).toLong
-    val kCount = 3 // find all frequent k-itemsets
+    val kCount = 3// find all frequent k-itemsets
 
     println("number of transactions: " + trans_num.toString() + "\n")
 

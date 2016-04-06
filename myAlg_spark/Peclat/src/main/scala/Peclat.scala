@@ -43,12 +43,11 @@ object Peclat {
     val conf = new SparkConf().setAppName("Peclat")
     val sc = new SparkContext(conf)
 
-    //val data = sc.textFile("file:/tmp/sampledb", 2)
-    val data = sc.textFile("file:/tmp/BMS1_itemset_mining_numed.txt", 8)
+    val data = sc.textFile("file:/tmp/BMS1_itemset_mining_numed.txt")
     val transactions = data.map(s => s.trim.split("\\s+")).cache
-    val minSup = 0.5 // user defined min support
+    val minSup = args(0).toDouble // user defined min support
     val minSupCount = math.ceil(transactions.count * minSup).toLong
-    val kCount = 3 // find all frequent k-itemsets
+    val kCount = 2 // find all frequent k-itemsets
 
     val f1_items = mrCountingItems(transactions, minSupCount).cache()
     println("Stage 1 completed! ")
@@ -68,7 +67,8 @@ object Peclat {
     val allTIDs = transactions.map(trans => trans(0).toLong).collect().toSet
  
     // frequent items
-    val f1_items = transactions.flatMap(toItem(_, allTIDs).map(item => (item.items.mkString, item))).
+    //val f1_items = transactions.flatMap(toItem(_, allTIDs).map(item => (item.items.mkString, item))).
+    val f1_items = transactions.flatMap(toItem(_, Set()).map(item => (item.items.mkString, item))).
       reduceByKey(_ + _).filter(_._2.sup >= minSupCount).map(_._2)
 
     return f1_items
@@ -212,5 +212,4 @@ object Peclat {
 
     return results.iterator
   }
-
 }
