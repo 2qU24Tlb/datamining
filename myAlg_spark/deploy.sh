@@ -65,7 +65,7 @@ function run {
         echo "running PFP..."
         ${CMD} --class FPGrowthExample \
                --master ${MASTER} ${CONF} \
-               $PWD/FPGrowth/target/scala-2.10/FPGrowthExample-assembly-1.0.jar \
+               $PWD/FPGrowth/target/scala-2.10/fpgrowthexample_2.10-1.0.jar \
                --minSupport ${MINSUP} \
                ${DB}
     elif [ $APP == "peclat" ]; then
