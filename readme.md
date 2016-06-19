@@ -1,8 +1,8 @@
 # Data Mining Algorithm Implementations
 
-# Include Algorithms:
-* Apriori
-* eclat
-* declat
+# Included Algorithms:
+* SVT 
+* FP-Growth 
+* Peclat
 
 # Bugs:
