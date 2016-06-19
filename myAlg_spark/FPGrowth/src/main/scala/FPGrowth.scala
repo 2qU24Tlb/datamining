@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 
-package org.apache.spark.mllib.fpm
+package fpm
+import fpm.FPGrowth.FreqItemset
 
 import java.{util => ju}
 import java.lang.{Iterable => JavaIterable}
@@ -28,7 +29,6 @@ import org.apache.spark.{HashPartitioner, Logging, Partitioner, SparkException}
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.api.java.JavaSparkContext.fakeClassTag
-import org.apache.spark.mllib.fpm.FPGrowth.FreqItemset
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
@@ -100,13 +100,9 @@ class FPGrowth private (
     val numParts = if (numPartitions > 0) numPartitions else data.partitions.length
     val partitioner = new HashPartitioner(numParts)
     val freqItems = genFreqItems(data, minCount, partitioner)
+    println(freqItems.size)
     val freqItemsets = genFreqItemsets(data, minCount, freqItems, partitioner)
     new FPGrowthModel(freqItemsets)
-  }
-
-  def run[Item, Basket <: JavaIterable[Item]](data: JavaRDD[Basket]): FPGrowthModel[Item] = {
-    implicit val tag = fakeClassTag[Item]
-    run(data.rdd.map(_.asScala.toArray))
   }
 
   /**

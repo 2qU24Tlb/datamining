@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.spark.mllib.fpm
+package fpm
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer

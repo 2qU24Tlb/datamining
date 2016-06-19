@@ -1,75 +1,38 @@
-import org.apache.spark.{SparkConf, SparkContext}
+package unioah.spark.fpm
+
 import org.apache.spark.rdd.RDD
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.Map
+import scala.reflect.ClassTag
 import org.apache.spark.RangePartitioner
 
 
-// start of data structure
-class Item(val items: Array[String], val TIDs: Set[Long], val sup: Long) extends Serializable {
-  val prefix = items.take(items.size - 1).mkString
-  var tidType: Int = 1 // 1 for tidSet, 2 for diffSet
-
-  def this(item: String, TID: Long) = this(Array(item), Set(TID), 1l)
-
-  def +(another: Item): Item = {
-    new Item(this.items, this.TIDs ++ another.TIDs, this.sup + another.sup)
+class SVT (val minSupport: Double) extends Serializable {
+  def run[Item: ClassTag](data: RDD[Array[Item]]) {
+    val minSupCount = math.ceil(minSupport * data.count).toLong
+    val freqItems = genFreqSingletons(data, minSupCount)
+    println(freqItems.size)
   }
 
-  def &(another: Item): Item = {
-    val newTIDs = this.TIDs & another.TIDs
-    val newItems = (this.items.toSet ++
-                      another.items.toSet).toArray.sorted
-    val newSup = newTIDs.size.toLong
-
-    return new Item(newItems, newTIDs, newSup)
-  }
-
-  override def toString(): String = {
-    //"(" + this.items.mkString(".") + ":" + this.TIDs.toList.sorted.mkString("_") + ")"
-    "(" + this.items.mkString(".") + ":" + this.TIDs.size.toString() + ")"
-  }
-}
-
-// start of test
-object SVT {
-  def main(args: Array[String]) {
-    val conf = new SparkConf().setAppName("SVT")
-    val sc = new SparkContext(conf)
-
-    Utils.debug = true
-
-    // args(0) for transactions, args(1) for minSup
-    val data = sc.textFile("file:/tmp/pumsb_star_lined.dat")
-    val transactions = data.map(s => s.trim.split("\\s+")).cache
-    val trans_num = transactions.count
-    val minSup = args(0).toDouble // user defined min support
-    val minSupCount = math.ceil(minSup * trans_num).toLong
-    val kCount = 3// find all frequent k-itemsets
-
-    println("number of transactions: " + trans_num.toString() + "\n")
-
-    val f1_items = genFreqSingletons(transactions, minSupCount)
-    //Utils.showResult("singletons: ", f1_items)
-
-    val fk_items = genKItemsets(f1_items, kCount, minSupCount)
-    //Utils.showResult("Equivalent Class: ", fk_items)
-
-    val fre_items = paraMining(fk_items, minSupCount)
-    Utils.showResult("Number of closed frequent itemsets: ", fre_items)
-
-    sc.stop
-  }
-
-  def genFreqSingletons(transactions: RDD[Array[String]], minSupCount: Long): RDD[Item] = {
-    val f1_items = transactions.flatMap(toItem(_)).
-      reduceByKey(_ + _).
-      filter(_._2.sup >= minSupCount).map(_._2).cache()
+  def genFreqSingletons[data: ClassTag](transactions: RDD[Array[data]], minSupCount: Long): Array[data] = {
+    val f1_items = transactions.flatMap{_.drop(1)}
+      .map(i => (i, 1L))
+      .reduceByKey(_ + _)
+      .filter(_._2 >= minSupCount)
+      .collect
+      .sortBy(_._2)
+      .map(_._1)
 
     return f1_items
   }
 
+  def genKItemsets[data: ClassTag](data: RDD[Array[data]], minCount: Long, freqItems: Array[data]):
+      RDD[SVTItem] = {
+  }
+}
+
   // convert the transaction string to Item
+/*
   def toItem(trans: Array[String]): Array[(String, Item)] = {
     val TID = trans(0).toLong
     val itemString = trans.drop(1)
@@ -95,7 +58,7 @@ object SVT {
 
         freSubSet = freSubSet.flatMap(genSubSets(_, candidates)).
           reduceByKey(_&_).
-          filter(_._2.sup >= minSupCount).map(_._2).cache()
+          filter(_._2.sup >= minSupCount).map(_._2)
       }
 
       myCount -= 1
@@ -168,7 +131,7 @@ object SVT {
     while(!freSubSet.isEmpty()) {
       preFreSubSet = freSubSet
       freSubSet = freSubSet.mapPartitions(localMining).
-        filter(_.sup >= minSupCount).cache()
+        filter(_.sup >= minSupCount)
     }
     freSubSet = preFreSubSet
 
@@ -195,7 +158,6 @@ object SVT {
 
     return results.iterator
   }
-}
 
 object Utils {
   var debug = false
@@ -219,3 +181,5 @@ object Utils {
 
   //[Todo]function: write results to log file
 }
+
+ */
