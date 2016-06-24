@@ -10,7 +10,7 @@ class YAFIM(val minSupport: Int) extends Serializable {
   }
 
   // Phase I
-  def genFreqSingletons[data: ClassTag](transactions: RDD[Array[data]], minSup: Int): Array[Data] = {
+  def genFreqSingletons[data: ClassTag](transactions: RDD[Array[data]], minSup: Int): Array[data] = {
     val f1_items = transactions.flatMap{_.drop(1)}
       .map(i => (i, 1L))
       .reduceByKey(_ + _)
@@ -22,4 +22,7 @@ class YAFIM(val minSupport: Int) extends Serializable {
   }
 
   // Phase II
+  def genFreItemsets[data: ClassTag](transactions: RDD[Array[data]], minSup: Int, freqItem: Array[data]) {
+
+  }
 }
