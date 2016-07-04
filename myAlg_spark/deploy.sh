@@ -52,12 +52,13 @@ function run {
     CMD="/usr/local/spark/bin/spark-submit "
     MASTER="spark://DOMBA-03.cs.umanitoba.ca:7077"
     DB="/tmp/pumsb_star.dat"
-    MINSUP="0.6"
-    CONF="--executor-memory 20G --conf spark.eventLog.enabled=true"
+    MINSUP="0.01"
+    #CONF="--executor-memory 20G --conf spark.eventLog.enabled=true"
+    CONF="--conf spark.eventLog.enabled=true"
 
     if [ $APP == "svt" ]; then
         echo "running SVT..."
-        ${CMD} --class "SVT" \
+        ${CMD} --class SVTTest \
                --master ${MASTER} ${CONF} \
                $PWD/SVT/target/scala-2.10/svt_2.10-3.0.jar \
                ${MINSUP}
@@ -65,11 +66,10 @@ function run {
         echo "running PFP..."
         ${CMD} --class FPGrowthExample \
                --master ${MASTER} ${CONF} \
-               $PWD/FPGrowth/target/scala-2.10/FPGrowthExample-assembly-1.0.jar \
-               --minSupport ${MINSUP} \
-               ${DB}
+               $PWD/FPGrowth/target/scala-2.10/fpgrowthexample_2.10-1.0.jar \
+               ${MINSUP}
     elif [ $APP == "peclat" ]; then
-        ${CMD} --class "Peclat" \
+        ${CMD} --class Peclat \
                --master ${MASTER} ${CONF} \
                $PWD/Peclat/target/scala-2.10/peclat_2.10-1.0.jar \
                ${MINSUP}
@@ -83,7 +83,7 @@ function compile {
     if [ $APP == "svt" ]; then
         cd $PWD/SVT; sbt package
     elif [ $APP == "pfp" ]; then
-        cd $PWD/FPGrowth; sbt compile && sbt assembly
+        cd $PWD/FPGrowth; sbt package	
     elif [ $APP == "peclat" ]; then
         cd $PWD/Peclat; sbt package
     fi
