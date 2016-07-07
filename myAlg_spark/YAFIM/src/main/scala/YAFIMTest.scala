@@ -6,7 +6,7 @@ object YAFIMtest {
   def main(args: Array[String]) {
     val minSup = args(0).toDouble
     val NumPartitions = -1
-    val DB = "file:/tmp/T10I4D100K.dat"
+    val DB = "file:/tmp/retail.txt"
 
     val conf = new SparkConf().setAppName(s"FPGrowthExample with $minSup")
     val sc = new SparkContext(conf)
