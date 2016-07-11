@@ -1,18 +1,18 @@
 package unioah.spark.fpm
-
 import org.apache.spark.rdd.RDD
 import scala.reflect.ClassTag
 import scala.util.control._
+import scala.collection.mutable.ArrayBuffer
 //import org.apache.jorphan.collections
 //import unioah.spark.fpm.Itemset
 
 class YAFIM(val minSup: Int) extends Serializable {
   var results = Array[Itemset]()
 
-  def run (data: RDD[Array[String]]): Array[Itemset] = {
+  def run (data: RDD[Array[String]]) {
     val f1_items = genFreqSingletons(data)
 
-    return f1_items
+    results = f1_items
   }
 
   def show() {
@@ -22,11 +22,11 @@ class YAFIM(val minSup: Int) extends Serializable {
 
   // Phase I
   def genFreqSingletons (transactions: RDD[Array[String]]): Array[Itemset] = {
-    val f1_items = transactions.flatMap(_.map(i => (i.toInt, 1L))).
+    val f1_items = transactions.flatMap(_.map(i => (i.toInt, 1))).
       reduceByKey(_+_).
       filter(_._2 >= minSup).
       sortBy(_._1).
-      map(x => new Itemset(x._1)).
+      map(x => new Itemset(x._1, x._2)).
       collect
 
     return f1_items
@@ -39,13 +39,12 @@ class YAFIM(val minSup: Int) extends Serializable {
     var k = 2
 
     while (level.length != 0) {
-      var candidates = genCandidates(level)
-
-      transactions.map(x => scanDB(candidates, x))
-      candidates.filter(_.sup >= minSup)
-
       freqItemsets = level
-      level = freqItems
+      var candidates = genCandidates(level)
+      var tmp = transactions.map(x => scanDB(candidates, x))
+      tmp.map(x => (x, x.sup)).reduceByKey(_+_).filter(_._2 >= minSup).map(_._1).collect
+
+      level = tmp
       k += 1
     }
 
@@ -53,13 +52,12 @@ class YAFIM(val minSup: Int) extends Serializable {
   }
 
   // generate candidates for Phase II
-  def genCandidates(prevLevel: Array[Itemset]): Array[Itemset] = {
+  def genCandidates(prevLevel: Array[Itemset]): Array[Array[Int]] = {
     var candidate = Array[Int]()
-    var candidates = Array[Itemset]()
+    var candidates = ArrayBuffer[Array[Int]]()
     val length = prevLevel.length
 
     val outer = new Breaks
-    val inner = new Breaks
 
     for (i <- 0 to length - 1) {
       outer.breakable {
@@ -77,14 +75,15 @@ class YAFIM(val minSup: Int) extends Serializable {
           }
           candidate = item1 ++ Array(item2.last)
 
-          if (checkSupport(candidate, prevLevel)) {
-            candidates :+ new Itemset(candidate)
-          }
+          // if (checkSupport(candidate, prevLevel)) {
+          //   candidates :+ candidate
+          // }
+          candidates +=  candidate
         }
       }
     }
 
-    return candidates
+    return candidates.toArray
   }
 
   //  check the candidate if all the subsets are frequent
@@ -123,15 +122,21 @@ class YAFIM(val minSup: Int) extends Serializable {
   }
 
   // scan database to get the support for the itemsets
-  def scanDB(itemsets: Array[Itemset], transaction: Array[String]) {
-    for (i <- itemsets) {
+  def scanDB(candidates: Array[Array[Int]], transaction: Array[String]): Array[Itemset] = {
+    var results = ArrayBuffer[Itemset]()
+
+    for (i <- candidates) {
       var pos: Int = 0
       for (j <- transaction) {
-        if (j.toInt == i.itemset(pos))
+        if (j.toInt == i(pos))
           pos += 1
-        if (pos == i.itemset.length)
-          i.sup += 1
+        if (pos == (i.length - 1)) {
+          results += new Itemset(i)
+        }
       }
     }
+
+    return results.toArray
   }
+
 }
