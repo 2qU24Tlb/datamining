@@ -73,6 +73,11 @@ function run {
                --master ${MASTER} ${CONF} \
                $PWD/Peclat/target/scala-2.10/peclat_2.10-1.0.jar \
                ${MINSUP}
+    elif [ $APP == "YAFIM" ]; then
+        ${CMD} --class YAFIMtest \
+               --master ${MASTER} ${CONF} \
+               $PWD/YAFIM/target/scala-2.10/yafim_2.10-3.0.jar \
+               ${MINSUP}
     fi
 }
 
@@ -86,6 +91,8 @@ function compile {
         cd $PWD/FPGrowth; sbt package	
     elif [ $APP == "peclat" ]; then
         cd $PWD/Peclat; sbt package
+    elif [ $APP == "yafim" ]; then
+        cd $PWD/YAFIM; sbt package
     fi
 }
 

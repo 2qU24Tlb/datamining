@@ -13,6 +13,7 @@ object YAFIMtest {
     val transactions = sc.textFile(DB).map(_.split(" ")).cache()
 
     val YAFIMModel = new YAFIM(math.ceil(minSup * transactions.count).toInt)
+    YAFIMModel.run(transactions)
     YAFIMModel.show()
 
     sc.stop()

@@ -11,8 +11,7 @@ class YAFIM(val minSup: Int) extends Serializable {
 
   def run (data: RDD[Array[String]]) {
     val f1_items = genFreqSingletons(data)
-
-    results = f1_items
+    results = genFreItemsets(data, f1_items)
   }
 
   def show() {
@@ -34,19 +33,26 @@ class YAFIM(val minSup: Int) extends Serializable {
 
   // Phase II
   def genFreItemsets (transactions: RDD[Array[String]], freqItems: Array[Itemset]): Array[Itemset] = {
-    var level = freqItems
-    var freqItemsets = freqItems
+    //var level = freqItems
+    var results = Array[Itemset]()
     var k = 2
 
-    while (level.length != 0) {
-      freqItemsets = level
-      var candidates = genCandidates(level)
-      var tmp = transactions.map(x => scanDB(candidates, x))
-      tmp.map(x => (x, x.sup)).reduceByKey(_+_).filter(_._2 >= minSup).map(_._1).collect
+    var candidates = genCandidates(freqItems)
+    var freqItemsets = transactions.flatMap(x => scanDB(candidates, x))
+      .map(x => (x, x.sup))
+      .reduceByKey(_+_)
+      .filter(_._2 >= minSup)
+      .map(_._1).collect
 
-      level = tmp
-      k += 1
-    }
+    // while (level.length != 0) {
+    //   freqItemsets = level
+    //   var candidates = genCandidates(level)
+    //   var tmp = transactions.map(x => scanDB(candidates, x))
+    //   tmp.map(x => (x, x.sup)).reduceByKey(_+_).filter(_._2 >= minSup).map(_._1).collect
+
+    //   level = tmp
+    //   k += 1
+    // }
 
     return freqItemsets
   }
