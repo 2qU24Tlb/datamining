@@ -73,15 +73,15 @@ function run {
                --master ${MASTER} ${CONF} \
                $PWD/Peclat/target/scala-2.10/peclat_2.10-1.0.jar \
                ${MINSUP}
-    elif [ $APP == "YAFIM" ]; then
+    elif [ $APP == "yafim" ]; then
         ${CMD} --class YAFIMtest \
                --master ${MASTER} ${CONF} \
-               $PWD/YAFIM/target/scala-2.10/yafim_2.10-3.0.jar \
+               $PWD/YAFIM/target/scala-2.10/yafim_2.10-1.0.jar \
                ${MINSUP}
     fi
 }
 
-function compile {
+function pack {
     APP=$1
     echo "compiling" $APP
 
@@ -106,6 +106,6 @@ elif [ $1 == "stop" ]; then
     stop
 elif [ $1 == "run" ]; then
     run $2
-elif [ $1 == "compile" ]; then
-    compile $2
+elif [ $1 == "pack" ]; then
+    pack $2
 fi

@@ -1,5 +1,4 @@
-package unioah.spark.fpm
-
+import unioah.spark.fpm.YAFIM
 import org.apache.spark.{SparkConf, SparkContext}
 
 object YAFIMtest {
@@ -8,7 +7,7 @@ object YAFIMtest {
     val NumPartitions = -1
     val DB = "file:/tmp/retail.txt"
 
-    val conf = new SparkConf().setAppName(s"FPGrowthExample with $minSup")
+    val conf = new SparkConf().setAppName(s"YAFIM Example with $minSup")
     val sc = new SparkContext(conf)
     val transactions = sc.textFile(DB).map(_.split(" ")).cache()
 

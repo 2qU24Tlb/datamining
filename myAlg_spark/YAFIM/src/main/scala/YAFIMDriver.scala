@@ -11,6 +11,10 @@ class YAFIM(val minSup: Int) extends Serializable {
 
   def run (data: RDD[Array[String]]) {
     val f1_items = genFreqSingletons(data)
+    println("number of frequent singletons is: " + f1_items.size)
+    for (i <- f1_items)
+        println(i)
+
     results = genFreItemsets(data, f1_items)
   }
 
@@ -32,27 +36,28 @@ class YAFIM(val minSup: Int) extends Serializable {
   }
 
   // Phase II
-  def genFreItemsets (transactions: RDD[Array[String]], freqItems: Array[Itemset]): Array[Itemset] = {
-    //var level = freqItems
-    var results = Array[Itemset]()
-    var k = 2
+  def genFreItemsets (transactions: RDD[Array[String]], freqItems: Array[Itemset]):
+      Array[Itemset] = {
+    var level = freqItems
+    var freqItemsets = freqItems
 
-    var candidates = genCandidates(freqItems)
-    var freqItemsets = transactions.flatMap(x => scanDB(candidates, x))
-      .map(x => (x, x.sup))
-      .reduceByKey(_+_)
-      .filter(_._2 >= minSup)
-      .map(_._1).collect
+    while (level.length != 0) {
+      var candidates = genCandidates(level)
+      var current = transactions.flatMap(x => scanDB(candidates, x))
+        .map(x => (x.mkString, new Itemset(x)))
+        .reduceByKey(_+_)
+        .filter(_._2.sup >= minSup)
+        .sortBy(_._1)
+        .map(_._2).collect
 
-    // while (level.length != 0) {
-    //   freqItemsets = level
-    //   var candidates = genCandidates(level)
-    //   var tmp = transactions.map(x => scanDB(candidates, x))
-    //   tmp.map(x => (x, x.sup)).reduceByKey(_+_).filter(_._2 >= minSup).map(_._1).collect
+      for (i <- current)
+        println(i)
 
-    //   level = tmp
-    //   k += 1
-    // }
+      level = current
+
+      if (level.length != 0)
+        freqItemsets = level
+    }
 
     return freqItemsets
   }
@@ -81,10 +86,9 @@ class YAFIM(val minSup: Int) extends Serializable {
           }
           candidate = item1 ++ Array(item2.last)
 
-          // if (checkSupport(candidate, prevLevel)) {
-          //   candidates :+ candidate
-          // }
-          candidates +=  candidate
+          if (checkFrequent(candidate, prevLevel)) {
+            candidates += candidate
+          }
         }
       }
     }
@@ -93,25 +97,40 @@ class YAFIM(val minSup: Int) extends Serializable {
   }
 
   //  check the candidate if all the subsets are frequent
-  def checkSupport(candidate: Array[Int], level: Array[Itemset]): Boolean = {
-    for (pos <- 0 to level.length - 1) {
+  def checkFrequent(candidate: Array[Int], level: Array[Itemset]): Boolean = {
+    var found = false
+
+    for (pos <- 0 to candidate.length - 1) {
       var first: Int = 0
       var last: Int = level.length - 1
-      var sample = candidate.drop(pos)
 
-      while (first <= last) {
-        var mid: Int = (first + last) >> 1
-        var comp = compareArray(sample, level(mid).itemset)
-        if (comp == -1) {
-          first = mid + 1
-        } else if (comp == 1) {
-          last = mid - 1
-        } else {
-          return true
+      var sample = candidate.take(pos) ++ candidate.drop(pos + 1)
+      if (candidate.length == 1)
+        sample = candidate
+
+      found = false
+
+      val outer = new Breaks
+      outer.breakable {
+        while (first <= last) {
+          var mid: Int = (first + last) >> 1
+          var comp = compareArray(sample, level(mid).itemset)
+          if (comp == -1) {
+            last = mid - 1
+          } else if (comp == 1) {
+            first = mid + 1
+          } else {
+            found = true
+            outer.break
+          }
         }
       }
+      if (found == false) {
+        return false
+      }
     }
-    return false
+
+    return true
   }
 
   // compare the content between two array
@@ -128,17 +147,21 @@ class YAFIM(val minSup: Int) extends Serializable {
   }
 
   // scan database to get the support for the itemsets
-  def scanDB(candidates: Array[Array[Int]], transaction: Array[String]): Array[Itemset] = {
-    var results = ArrayBuffer[Itemset]()
+  def scanDB(candidates: Array[Array[Int]], transaction: Array[String]): Array[Array[Int]] = {
+    var results = ArrayBuffer[Array[Int]]()
 
     for (i <- candidates) {
       var pos: Int = 0
-      for (j <- transaction) {
-        if (j.toInt == i(pos))
-          pos += 1
-        if (pos == (i.length - 1)) {
-          results += new Itemset(i)
-        }
+        for (j <- transaction) {
+          if (pos < i.length) {
+            if (j.toInt == i(pos)) {
+              pos += 1
+              if (pos == i.length) {
+                results += i
+              }
+            } else if (j.toInt > i(pos))
+              pos = i.length
+          }
       }
     }
 

@@ -1,6 +1,6 @@
 name := "YAFIM"
 
-version := "3.0"
+version := "1.0"
 
 scalaVersion := "2.10.6"
 
