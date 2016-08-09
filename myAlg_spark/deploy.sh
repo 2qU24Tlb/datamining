@@ -81,7 +81,7 @@ function run {
     fi
 }
 
-function compile {
+function pack {
     APP=$1
     echo "compiling" $APP
 
@@ -106,6 +106,6 @@ elif [ $1 == "stop" ]; then
     stop
 elif [ $1 == "run" ]; then
     run $2
-elif [ $1 == "compile" ]; then
-    compile $2
+elif [ $1 == "pack" ]; then
+    pack $2
 fi

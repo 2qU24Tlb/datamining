@@ -11,7 +11,11 @@ class Itemset(items: Array[Int], support: Int) extends Serializable {
   def prefix() = itemset.take(this.itemset.length - 1)
   def last() = itemset.last
 
+  def +(another: Itemset): Itemset = {
+    new Itemset(this.itemset, this.sup + another.sup)
+  }
+
   override def toString(): String = {
-    "items: " + itemset.mkString + ": " + sup.toString
+    "items: <" + itemset.mkString(" ") + ">, " + sup.toString
   }
 }
