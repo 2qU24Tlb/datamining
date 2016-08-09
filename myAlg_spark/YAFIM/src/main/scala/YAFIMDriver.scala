@@ -1,10 +1,9 @@
 package unioah.spark.fpm
+
 import org.apache.spark.rdd.RDD
 import scala.reflect.ClassTag
 import scala.util.control._
 import scala.collection.mutable.ArrayBuffer
-//import org.apache.jorphan.collections
-//import unioah.spark.fpm.Itemset
 
 class YAFIM(val minSup: Int) extends Serializable {
   var results = Array[Itemset]()

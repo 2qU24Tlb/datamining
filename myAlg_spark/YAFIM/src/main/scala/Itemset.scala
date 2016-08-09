@@ -18,4 +18,5 @@ class Itemset(items: Array[Int], support: Int) extends Serializable {
   override def toString(): String = {
     "items: <" + itemset.mkString(" ") + ">, " + sup.toString
   }
+
 }

@@ -18,20 +18,11 @@ function clean {
     echo "Clean Done!"
 }
 
-function install {
-    echo "Install On Workers..."
-
-    ssh helium-01 wget ${SPARK_PACKAGE} -nv -O ${MYSPACE}/${SPARK_VERSION}.tgz
-    ssh helium-01 tar xf ${MYSPACE}/${SPARK_VERSION}.tgz -C /${MYSPACE}/
-
-    echo "Install Done!"
-}
-
 function start {
     echo "Starting Workers..."
 
     for item in ${WORKERS[*]}; do
-        ssh $item ${MYSPACE}/${SPARK_VERSION}/sbin/start-slave.sh spark://DOMBA-03.cs.umanitoba.ca:7077
+        ssh $item ${MYSPACE}/spark/sbin/start-slave.sh spark://DOMBA-03.cs.umanitoba.ca:7077
     done
 
     echo "Start Done!"
@@ -41,7 +32,7 @@ function stop {
     echo "Stopping..."
 
     for item in ${WORKERS[*]}; do
-        ssh $item ${MYSPACE}/${SPARK_VERSION}//sbin/stop-slave.sh
+        ssh $item ${MYSPACE}/spark/sbin/stop-slave.sh
     done
 
     echo "Stop Done!"
