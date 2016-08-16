@@ -1,6 +1,7 @@
 ## for all
 /test
 TAGS
+.idea
 
 ## for python
 */output/

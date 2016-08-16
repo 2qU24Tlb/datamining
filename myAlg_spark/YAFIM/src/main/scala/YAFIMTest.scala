@@ -18,4 +18,5 @@ object YAFIMtest {
 
     sc.stop()
   }
+
 }

@@ -2,6 +2,4 @@ name := "YAFIM"
 
 version := "1.0"
 
-scalaVersion := "2.10.6"
-
-libraryDependencies += "org.apache.spark" %% "spark-core" % "1.6.1"
+libraryDependencies += "org.apache.spark" % "spark-core_2.11" % "2.0.0"
