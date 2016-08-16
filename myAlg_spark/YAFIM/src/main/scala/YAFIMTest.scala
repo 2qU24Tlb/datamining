@@ -10,6 +10,7 @@ object YAFIMtest {
     val conf = new SparkConf().setAppName(s"YAFIM Example with $minSup")
     val sc = new SparkContext(conf)
     val transactions = sc.textFile(DB).map(_.split(" ")).cache()
+    println("number of transaction is: " + transactions.count.toString)
 
     val YAFIMModel = new YAFIM(math.ceil(minSup * transactions.count).toInt)
     YAFIMModel.run(transactions)

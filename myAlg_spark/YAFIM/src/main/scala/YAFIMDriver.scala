@@ -12,8 +12,6 @@ class YAFIM(val minSup: Int) extends Serializable {
   def run (data: RDD[Array[String]]) {
     val f1_items = genFreqSingletons(data)
     println("number of frequent singletons is: " + f1_items.size)
-    for (i <- f1_items)
-        println(i)
 
     results = genFreItemsets(data, f1_items)
   }
@@ -42,21 +40,18 @@ class YAFIM(val minSup: Int) extends Serializable {
     var freqItemsets = freqItems
 
     while (level.length != 0) {
+      freqItemsets = level
       var candidates = genCandidates(level)
       var current = transactions.flatMap(x => scanDB(candidates, x))
-        .map(x => (x.mkString, new Itemset(x)))
+        .map(y => (y.mkString, new Itemset(y)))
         .reduceByKey(_+_)
         .filter(_._2.sup >= minSup)
-        .sortBy(_._1)
         .map(_._2).collect
+
+      level = current.sortWith((x,y) => sortArray(x.itemset, y.itemset))
 
       for (i <- current)
         println(i)
-
-      level = current
-
-      if (level.length != 0)
-        freqItemsets = level
     }
 
     return freqItemsets
@@ -146,6 +141,17 @@ class YAFIM(val minSup: Int) extends Serializable {
     return 0
   }
 
+  // sortWith function for soring array
+  def sortArray(array1: Array[Int], array2: Array[Int]): Boolean = {
+    val min_length = math.min(array1.length, array2.length)
+    for (i <- 0 to min_length - 1) {
+      if (array1(i) > array2(i))
+        return false
+    }
+
+    return true
+  }
+
   // scan database to get the support for the itemsets
   def scanDB(candidates: Array[Array[Int]], transaction: Array[String]): Array[Array[Int]] = {
     var results = ArrayBuffer[Array[Int]]()
@@ -167,5 +173,4 @@ class YAFIM(val minSup: Int) extends Serializable {
 
     return results.toArray
   }
-
 }

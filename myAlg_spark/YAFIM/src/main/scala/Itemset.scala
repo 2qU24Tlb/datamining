@@ -15,6 +15,14 @@ class Itemset(items: Array[Int], support: Int) extends Serializable {
     new Itemset(this.itemset, this.sup + another.sup)
   }
 
+  def override >(another: Itemset): Boolean = {
+    val min_length = math.min(this.itemset.length, another.itemset.length)
+    for (i <- 0 to min_length - 1) {
+      return true;
+    }
+    return false;
+  }
+
   override def toString(): String = {
     "items: <" + itemset.mkString(" ") + ">, " + sup.toString
   }
