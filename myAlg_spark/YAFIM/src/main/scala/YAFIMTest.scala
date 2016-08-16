@@ -1,7 +1,7 @@
-import unioah.spark.fpm.YAFIM
+import unioah.spark.fpm.YAFIMDriver
 import org.apache.spark.{SparkConf, SparkContext}
 
-object YAFIMtest {
+object YAFIMTest {
   def main(args: Array[String]) {
     val minSup = args(0).toDouble
     val NumPartitions = -1
@@ -12,9 +12,9 @@ object YAFIMtest {
     val transactions = sc.textFile(DB).map(_.split(" ")).cache()
     println("number of transaction is: " + transactions.count.toString)
 
-    val YAFIMModel = new YAFIM(math.ceil(minSup * transactions.count).toInt)
-    YAFIMModel.run(transactions)
-    YAFIMModel.show()
+    val YAFIM = new YAFIMDriver(math.ceil(minSup * transactions.count).toInt)
+    YAFIM.run(transactions)
+    YAFIM.show()
 
     sc.stop()
   }

@@ -1,18 +1,17 @@
 package unioah.spark.fpm
 
 import org.apache.spark.rdd.RDD
-import scala.reflect.ClassTag
 import scala.util.control._
 import scala.collection.mutable.ArrayBuffer
 
-class YAFIM(val minSup: Int) extends Serializable {
+class YAFIMDriver(val minSup: Int) extends Serializable {
   var results = Array[Itemset]()
 
   def run (data: RDD[Array[String]]) {
-    val f1_items = genFreqSingletons(data)
+    var results = genFreqSingletons(data)
     println("number of frequent singletons is: " + f1_items.size)
 
-    results = genFreItemsets(data, f1_items)
+    // results = genFreItemsets(data, f1_items)
   }
 
   def show() {
@@ -23,11 +22,11 @@ class YAFIM(val minSup: Int) extends Serializable {
   // Phase I
   def genFreqSingletons (transactions: RDD[Array[String]]): Array[Itemset] = {
     val f1_items = transactions.flatMap(_.map(i => (i.toInt, 1))).
-      reduceByKey(_+_).
-      filter(_._2 >= minSup).
-      sortBy(_._1).
-      map(x => new Itemset(x._1, x._2)).
-      collect
+      reduceByKey(_+_)
+      .filter(_._2 >= minSup)
+      .collect()
+      .sortBy(_._1)
+      .map(x => new Itemset(x._1, x._2)).
 
     return f1_items
   }
@@ -172,4 +171,5 @@ class YAFIM(val minSup: Int) extends Serializable {
 
     return results.toArray
   }
+
 }
