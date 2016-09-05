@@ -3,9 +3,6 @@
 WORKERS=(helium-03 helium-04 helium-05)
 MYSPACE="/import/helium-share/csgrad/zhangh15"
 
-SPARK_PACKAGE="http://apache.mirror.gtcomm.net/spark/spark-1.6.1/spark-1.6.1-bin-hadoop2.6.tgz"
-SPARK_VERSION="spark-1.6.1-bin-hadoop2.6"
-
 function clean {
     echo "Clean previous results...!"
 
@@ -19,6 +16,9 @@ function clean {
 }
 
 function start {
+    echo "Starting Master..."
+    /usr/local/spark/sbin/start-master.sh &&
+
     echo "Starting Workers..."
 
     for item in ${WORKERS[*]}; do
@@ -35,6 +35,8 @@ function stop {
         ssh $item ${MYSPACE}/spark/sbin/stop-slave.sh
     done
 
+    /usr/local/spark/sbin/stop-master.sh &&
+
     echo "Stop Done!"
 }
 
@@ -42,8 +44,8 @@ function run {
     APP=$1
     CMD="/usr/local/spark/bin/spark-submit "
     MASTER="spark://DOMBA-03.cs.umanitoba.ca:7077"
-    DB="/tmp/pumsb_star.dat"
-    MINSUP="0.01"
+    DB="file:/tmp/retail.txt"
+    MINSUP="0.5"
     #CONF="--executor-memory 20G --conf spark.eventLog.enabled=true"
     CONF="--conf spark.eventLog.enabled=true"
 
@@ -65,10 +67,10 @@ function run {
                $PWD/Peclat/target/scala-2.10/peclat_2.10-1.0.jar \
                ${MINSUP}
     elif [ $APP == "yafim" ]; then
-        ${CMD} --class YAFIMtest \
+        ${CMD} --class YAFIMTest \
                --master ${MASTER} ${CONF} \
-               $PWD/YAFIM/target/scala-2.10/yafim_2.10-1.0.jar \
-               ${MINSUP}
+               $PWD/YAFIM/target/scala-2.11/yafim_2.11-1.0.jar \
+               ${DB} ${MINSUP}
     fi
 }
 
