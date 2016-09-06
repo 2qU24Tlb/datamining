@@ -44,6 +44,7 @@ function run {
     APP=$1
     CMD="/usr/local/spark/bin/spark-submit "
     MASTER="spark://DOMBA-03.cs.umanitoba.ca:7077"
+    #MASTER="spark://myArch.hao.com:7077"
     DB="file:/tmp/retail.txt"
     MINSUP="0.5"
     #CONF="--executor-memory 20G --conf spark.eventLog.enabled=true"

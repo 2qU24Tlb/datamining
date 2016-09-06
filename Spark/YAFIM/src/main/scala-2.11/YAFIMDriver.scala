@@ -30,7 +30,11 @@ class YAFIMDriver(val minSup: Int) extends Serializable {
       for (i <-fk_items)
         results.append(i)
 
-      candidates = genKItemsets(fk_items)
+      if (fk_items.length > 0) {
+        candidates = genKItemsets(fk_items)
+      } else {
+        candidates = Array[Array[Int]]()
+      }
     }
 
   }
