@@ -46,7 +46,8 @@ function run {
     MASTER="spark://DOMBA-03.cs.umanitoba.ca:7077"
     #MASTER="spark://myArch.hao.com:7077"
     DB="file:/tmp/retail.txt"
-    MINSUP="0.5"
+    DBL="file:/tmp/retail_line.txt"
+    MINSUP="0.1"
     #CONF="--executor-memory 20G --conf spark.eventLog.enabled=true"
     CONF="--conf spark.eventLog.enabled=true"
 
@@ -62,11 +63,11 @@ function run {
                --master ${MASTER} ${CONF} \
                $PWD/FPGrowth/target/scala-2.10/fpgrowthexample_2.10-1.0.jar \
                ${MINSUP}
-    elif [ $APP == "peclat" ]; then
-        ${CMD} --class Peclat \
+    elif [ $APP == "PEclat" ]; then
+        ${CMD} --class PEclatLaunch \
                --master ${MASTER} ${CONF} \
-               $PWD/Peclat/target/scala-2.10/peclat_2.10-1.0.jar \
-               ${MINSUP}
+	       $PWD/PEclat/target/scala-2.11/peclat_2.11-1.0.jar \
+	       ${DBL} ${MINSUP}
     elif [ $APP == "yafim" ]; then
         ${CMD} --class YAFIMTest \
                --master ${MASTER} ${CONF} \
@@ -83,8 +84,8 @@ function pack {
         cd $PWD/SVT; sbt package
     elif [ $APP == "pfp" ]; then
         cd $PWD/FPGrowth; sbt package	
-    elif [ $APP == "peclat" ]; then
-        cd $PWD/Peclat; sbt package
+    elif [ $APP == "PEclat" ]; then
+        cd $PWD/PEclat; sbt package
     elif [ $APP == "yafim" ]; then
         cd $PWD/YAFIM; sbt package
     fi
