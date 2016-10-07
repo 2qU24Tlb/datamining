@@ -1,7 +1,3 @@
-/**
-  * Created by zhangh15 on 9/8/16.
-  */
-
 import org.apache.spark.{SparkConf, SparkContext}
 
 object PEclatLaunch {
@@ -10,10 +6,11 @@ object PEclatLaunch {
     val sc = new SparkContext(conf)
 
     val transactions = sc.textFile(args(0)).map(_.trim.split("\\s+")).cache
-    val minSup = (args(1).toDouble * transactions.count()).toLong
+    val minSup = Math.ceil(args(1).toDouble * transactions.count)
 
     val PEclatModel = new PEclatDrive()
     PEclatModel.run(transactions, minSup)
+    PEclatModel.show()
 
     sc.stop()
   }
